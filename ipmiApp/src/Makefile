@@ -5,45 +5,64 @@ include $(TOP)/configure/CONFIG
 #  ADD MACRO DEFINITIONS AFTER THIS LINE
 #=============================
 
+CXXFLAGS += -g -ggdb -O0 -std=c++11 -fpermissive
+
 #=============================
 # Build the IOC application
-#
-USR_CXXFLAGS += -std=c++11 -g -ggdb -O0
 
-ipmitool_DIR = $(IPMITOOL)/lib/.libs/
-
-PROD_IOC = ipmi
+#PROD_IOC = ipmi
 # ipmi.dbd will be created and installed
-DBD += ipmi.dbd
+#DBD += ipmi.dbd
+DBD += epicsipmi.dbd
 
 # ipmi.dbd will be made up from these files:
-ipmi_DBD += base.dbd
-ipmi_DBD += epicsipmi.dbd
+#ipmi_DBD += base.dbd
 
 # Include dbd files from all support applications:
 #ipmi_DBD += xxx.dbd
 
 # Add all the support libraries needed by this IOC
-ipmi_LIBS += epicsipmi
+#ipmi_LIBS += xxx
+#ipmi_LIBS += freeipmi
+LIB_LIBS += freeipmi
+freeipmi_DIR = /ics/lib/freeipmi_1.6.11/lib/
+
+SRC_DIRS += /ics/lib/freeipmi_1.6.11/include
+
+LIBRARY += epicsipmi
+epicsipmi_LIBS += freeipmi
+epicsipmi_SRCS += epicsshell.cpp
+epicsipmi_SRCS += epicsdevice.cpp
+epicsipmi_SRCS += common.cpp
+epicsipmi_SRCS += print.cpp
+epicsipmi_SRCS += dispatcher.cpp
+epicsipmi_SRCS += provider.cpp
+epicsipmi_SRCS += freeipmiprovider.cpp
+epicsipmi_SRCS += ipmifru.cpp
+epicsipmi_SRCS += ipmisensor.cpp
+epicsipmi_SRCS += ipmipicmg.cpp
 
 # ipmi_registerRecordDeviceDriver.cpp derives from ipmi.dbd
-ipmi_SRCS += ipmi_registerRecordDeviceDriver.cpp
+##ipmi_SRCS += ipmi_registerRecordDeviceDriver.cpp
 
 # Build the main IOC entry point on workstation OSs.
-ipmi_SRCS_DEFAULT += main.cpp
-ipmi_SRCS_vxWorks += -nil-
+##ipmi_SRCS_DEFAULT += ipmiMain.cpp
+##ipmi_SRCS_vxWorks += -nil-
 
 # Add support from base/src/vxWorks if needed
 #ipmi_OBJS_vxWorks += $(EPICS_BASE_BIN)/vxComLibrary
 
 # Finally link to the EPICS Base libraries
-ipmi_LIBS += $(EPICS_BASE_IOC_LIBS)
+##ipmi_LIBS += $(EPICS_BASE_IOC_LIBS)
 
-#USR_SYS_LIBS += freeipmi
-freeipmi_DIR = /home/kvx/repos/epicsipmi/vendor/freeipmi/libfreeipmi/.libs
-PROD_LIBS += freeipmi
+# Read/Report SDR Repository from device
+PROD_HOST += report-sdr
+report-sdr_SRCS += report-sdr.cpp
+report-sdr_LIBS += freeipmi
 
 #===========================
+
+#USR_CXXFLAGS += -std=c++11 -fpermissive
 
 include $(TOP)/configure/RULES
 #----------------------------------------

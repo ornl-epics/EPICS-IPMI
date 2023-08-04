@@ -73,45 +73,43 @@ std::string get_sensor_event_reading_type_code(uint8_t val) {
     return s + "Unknown";
 }
 
-#define MAX_ID_STRING_LEN 100
-
-class BaseRec
+class SdrRec
 {
 protected:
     uint16_t record_id;
     uint8_t record_type;
     std::string device_id_string;
 public:
-    BaseRec(uint16_t record_id, uint8_t record_type);
-    ~BaseRec();
+    SdrRec(uint16_t record_id, uint8_t record_type);
+    ~SdrRec();
     uint16_t get_record_id();
     uint8_t get_record_type();
     std::string get_device_id_string();
 
 };
 
-BaseRec::BaseRec(uint16_t record_id, uint8_t record_type)
+SdrRec::SdrRec(uint16_t record_id, uint8_t record_type)
     :record_id(record_id), record_type(record_type)
 {
 
 }
 
-BaseRec::~BaseRec() {
+SdrRec::~SdrRec() {
 }
 
-uint16_t BaseRec::get_record_id() {
+uint16_t SdrRec::get_record_id() {
     return this->record_id;
 }
 
-uint8_t BaseRec::get_record_type() {
+uint8_t SdrRec::get_record_type() {
     return this->record_type;
 }
 
-std::string BaseRec::get_device_id_string() {
+std::string SdrRec::get_device_id_string() {
     return this->device_id_string;
 }
 
-class SensorRec : public BaseRec
+class SensorRecCompact : public SdrRec
 {
 private:
     uint8_t sensor_owner_id_type;
@@ -126,8 +124,8 @@ private:
     uint8_t event_reading_type_code;
 
 public:
-    SensorRec(ipmi_sdr_ctx_t sdr, uint16_t record_id, uint8_t record_type);
-    ~SensorRec();
+    SensorRecCompact(ipmi_sdr_ctx_t sdr, uint16_t record_id, uint8_t record_type);
+    ~SensorRecCompact();
     uint8_t get_sensor_owner_id_type();
     uint8_t get_sensor_owner_id();
     uint8_t get_sensor_owner_lun();
@@ -137,11 +135,10 @@ public:
     uint8_t get_entity_instance();
     uint8_t get_sensor_type();
     uint8_t get_event_reading_type_code();
-
 };
 
-SensorRec::SensorRec(ipmi_sdr_ctx_t sdr, uint16_t record_id, uint8_t record_type)
-    :BaseRec(record_id, record_type)
+SensorRecCompact::SensorRecCompact(ipmi_sdr_ctx_t sdr, uint16_t record_id, uint8_t record_type)
+    :SdrRec(record_id, record_type)
 {
     int rv = (-1);
 
@@ -157,54 +154,74 @@ SensorRec::SensorRec(ipmi_sdr_ctx_t sdr, uint16_t record_id, uint8_t record_type
 
     rv = ipmi_sdr_parse_event_reading_type_code (sdr, NULL, 0, &event_reading_type_code);
 
-    char id_str[MAX_ID_STRING_LEN] = {'\0'};
-    rv = ipmi_sdr_parse_id_string (sdr, NULL, 0, &id_str[0], 99);
+    char id_str[IPMI_SDR_MAX_SENSOR_NAME_LENGTH] = {'\0'};
+    rv = ipmi_sdr_parse_id_string (sdr, NULL, 0, &id_str[0], IPMI_SDR_MAX_SENSOR_NAME_LENGTH);
     this->device_id_string = id_str;
-
 
 }
 
-SensorRec::~SensorRec()
+SensorRecCompact::~SensorRecCompact()
 {
 }
 
-uint8_t SensorRec::get_sensor_owner_id_type() {
+uint8_t SensorRecCompact::get_sensor_owner_id_type() {
     return this->sensor_owner_id_type;
 }
 
-uint8_t SensorRec::get_sensor_owner_id() {
+uint8_t SensorRecCompact::get_sensor_owner_id() {
     return this->sensor_owner_id;
 }
 
-uint8_t SensorRec::get_sensor_owner_lun() {
+uint8_t SensorRecCompact::get_sensor_owner_lun() {
     return this->sensor_owner_lun;
 }
 
-uint8_t SensorRec::get_channel_number() {
+uint8_t SensorRecCompact::get_channel_number() {
     return this->channel_number;
 }
 
-uint8_t SensorRec::get_sensor_number() {
+uint8_t SensorRecCompact::get_sensor_number() {
     return this->sensor_number;
 }
 
-uint8_t SensorRec::get_entity_id() {
+uint8_t SensorRecCompact::get_entity_id() {
     return this->entity_id;
 }
 
-uint8_t SensorRec::get_entity_instance() {
+uint8_t SensorRecCompact::get_entity_instance() {
     return this->entity_instance;
 }
 
-uint8_t SensorRec::get_sensor_type() {
+uint8_t SensorRecCompact::get_sensor_type() {
     return this->sensor_type;
 }
 
-uint8_t SensorRec::get_event_reading_type_code() {
+uint8_t SensorRecCompact::get_event_reading_type_code() {
     return this->event_reading_type_code;
 }
 
-class FruDevLocatorRec : public BaseRec
+
+class SensorRecFull : public SensorRecCompact
+{
+private:
+    
+
+public:
+    SensorRecFull(ipmi_sdr_ctx_t sdr, uint16_t record_id, uint8_t record_type);
+    ~SensorRecFull();
+};
+
+SensorRecFull::SensorRecFull(ipmi_sdr_ctx_t sdr, uint16_t record_id, uint8_t record_type)
+    :SensorRecCompact(sdr, record_id, record_type)
+{
+
+}
+
+SensorRecFull::~SensorRecFull()
+{
+}
+
+class FruDevLocatorRec : public SdrRec
 {
 private:
     uint8_t device_access_address;
@@ -215,17 +232,18 @@ private:
     uint8_t channel_number;
     uint8_t fru_entity_id;
     uint8_t fru_entity_instance;
-    std::vector<std::shared_ptr<SensorRec>> sensor_records;
+    std::vector<std::shared_ptr<SensorRecCompact>> sensor_records;
 
 public:
     FruDevLocatorRec(ipmi_sdr_ctx_t sdr, uint16_t recid, uint8_t rectype);
     ~FruDevLocatorRec();
     std::string report();
-    void parse_sensors(std::list<std::shared_ptr<SensorRec>> &sensor_list);
+    template<typename T>
+    void parse_sensors(T &sensor_list);
 };
 
 FruDevLocatorRec::FruDevLocatorRec(ipmi_sdr_ctx_t sdr, uint16_t recid, uint8_t rectype)
-    :BaseRec(recid, rectype)
+    :SdrRec(recid, rectype)
 {
     if(rectype != IPMI_SDR_FORMAT_FRU_DEVICE_LOCATOR_RECORD) {
 	std::stringstream ss;
@@ -246,8 +264,8 @@ FruDevLocatorRec::FruDevLocatorRec(ipmi_sdr_ctx_t sdr, uint16_t recid, uint8_t r
                     &this->logical_physical_fru_device,
                     &this->channel_number);
 
-    char id_str[MAX_ID_STRING_LEN] = {'\0'};
-    rv = ipmi_sdr_parse_device_id_string (sdr, NULL, 0, &id_str[0], MAX_ID_STRING_LEN-1);
+    char id_str[IPMI_SDR_MAX_SENSOR_NAME_LENGTH] = {'\0'};
+    rv = ipmi_sdr_parse_device_id_string (sdr, NULL, 0, &id_str[0], IPMI_SDR_MAX_SENSOR_NAME_LENGTH);
     this->device_id_string = id_str;
 
 }
@@ -320,14 +338,10 @@ std::string FruDevLocatorRec::report() {
     return ss.str() + "\n";
 }
 
-void FruDevLocatorRec::parse_sensors(std::list<std::shared_ptr<SensorRec>> &sensor_list) {
+template<typename T>
+void FruDevLocatorRec::parse_sensors(T &sensor_list) {
     
-    for(std::shared_ptr<SensorRec> &rec: sensor_list) {
-        /** printf("[FRU %u, %u, %u, %s] Sensor: %s, id: %u, inst: %u\n",
-                this->logical_fru_device_device_slave_address,
-                this->fru_entity_id, this->fru_entity_instance,
-                this->device_id_string.c_str(),
-                rec->get_device_id_string().c_str(), rec->get_entity_id(), rec->get_entity_instance());*/
+    for(auto &rec: sensor_list) {
         if(rec->get_entity_id() == this->fru_entity_id) {
             if(rec->get_entity_instance() == this->fru_entity_instance)
                 this->sensor_records.push_back(rec);
@@ -335,8 +349,31 @@ void FruDevLocatorRec::parse_sensors(std::list<std::shared_ptr<SensorRec>> &sens
     }
 }
 
+void parse_args(int argc, char const *argv[], std::map<std::string,std::string> &m) {
+    
+    std::vector<std::string> args;
+    for(int x = 1; x<argc; x++){
+        args.push_back(argv[x]);
+    }
+
+    std::vector<std::string>::iterator itr = args.begin();
+    while(itr != args.end()){
+        if(*itr == "-h" || *itr == "--host") {
+            m["-h"] = *(++itr);
+        }
+        itr++;
+        ///std::cout << arg << std::endl;
+    }
+    for(auto &x : m) {
+        std::cout << "Map->first: " << x.first << ", Map->secod: " << x.second << std::endl;
+    }
+}
+
 int main(int argc, char const *argv[]) {
     
+    //std::map<std::string,std::string> args;
+    //parse_args(argc, argv, args);
+    //return;
     const char *hostname = "192.168.201.141";
     const char *username = "";
     const char *password = "";
@@ -390,10 +427,10 @@ int main(int argc, char const *argv[]) {
     uint8_t record_type = 0;
 
     std::list<uint16_t> mcdlr;
-    std::list<std::shared_ptr<FruDevLocatorRec>> fdlr;
+    std::list<std::shared_ptr<FruDevLocatorRec>> fruDevLocRecList;
     std::list<uint16_t> evntr;
-    std::list<std::shared_ptr<SensorRec>> fsr;
-    std::list<uint16_t> csr;
+    std::list<std::shared_ptr<SensorRecFull>> sensRecFullList;
+    std::list<std::shared_ptr<SensorRecCompact>> sensRecCompactList;
 
     for(int i = 0; i < record_count; i++, ipmi_sdr_cache_next(sdr)) {
 	    rv = ipmi_sdr_parse_record_id_and_type (sdr,
@@ -402,8 +439,8 @@ int main(int argc, char const *argv[]) {
                             &record_id,
                             &record_type);
 
-        char id_str[MAX_ID_STRING_LEN] = {'\0'};
-        rv = ipmi_sdr_parse_device_id_string (sdr, NULL, 0, &id_str[0], MAX_ID_STRING_LEN-1);
+        char id_str[IPMI_SDR_MAX_SENSOR_NAME_LENGTH] = {'\0'};
+        rv = ipmi_sdr_parse_device_id_string (sdr, NULL, 0, &id_str[0], IPMI_SDR_MAX_SENSOR_NAME_LENGTH);
 
         /** printf("**** rv: %i, record_id: %u, name: \'%s\', record_type: %s(%u)\n",
                 rv, record_id, id_str, sdr_type_itos_map[record_type].c_str(), record_type);*/
@@ -411,12 +448,11 @@ int main(int argc, char const *argv[]) {
         try {
 		    
 		    if(record_type == IPMI_SDR_FORMAT_FULL_SENSOR_RECORD) {
-                fsr.push_back(std::make_shared<SensorRec>(sdr, record_id, record_type));
+                sensRecFullList.push_back(std::make_shared<SensorRecFull>(sdr, record_id, record_type));
             }
 
 		    if(record_type == IPMI_SDR_FORMAT_COMPACT_SENSOR_RECORD) {
-			    ///csr.push_back(record_id);
-                fsr.push_back(std::make_shared<SensorRec>(sdr, record_id, record_type));
+                sensRecCompactList.push_back(std::make_shared<SensorRecCompact>(sdr, record_id, record_type));
             }
 
 		    if(record_type == IPMI_SDR_FORMAT_EVENT_ONLY_RECORD) {
@@ -432,7 +468,7 @@ int main(int argc, char const *argv[]) {
             }
 
 		    if(record_type == IPMI_SDR_FORMAT_FRU_DEVICE_LOCATOR_RECORD) {
-                fdlr.push_back(std::make_shared<FruDevLocatorRec>(sdr, record_id, record_type));
+                fruDevLocRecList.push_back(std::make_shared<FruDevLocatorRec>(sdr, record_id, record_type));
             }
 
             if(record_type == IPMI_SDR_FORMAT_MANAGEMENT_CONTROLLER_DEVICE_LOCATOR_RECORD) {
@@ -456,11 +492,13 @@ int main(int argc, char const *argv[]) {
 
     }
 
-    printf("mcdlr: %i, fdlr: %i, evntr: %i, fsr: %i, csr: %i\n", mcdlr.size(), fdlr.size(), evntr.size(), fsr.size(), csr.size());
+    printf("mcdlr: %i, fruDevLocRecList: %i, evntr: %i, SensRecFullList: %i, SensRecCompactList: %i\n", mcdlr.size(), fruDevLocRecList.size(), evntr.size(), sensRecFullList.size(), sensRecCompactList.size());
 
-    for(std::shared_ptr<FruDevLocatorRec> &_fdlr: fdlr) {
-        _fdlr->parse_sensors(fsr);
-        std::cout << _fdlr->report();
+    for(std::shared_ptr<FruDevLocatorRec> &fdlr: fruDevLocRecList) {
+        fdlr->parse_sensors(sensRecFullList);
+        fdlr->parse_sensors(sensRecCompactList);
+        std::cout << fdlr->report();
+
     }
 
     

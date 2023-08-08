@@ -14,7 +14,9 @@
 #include <stdexcept>
 #include <sstream>
 #include <iostream>
+#include <type_traits>
 #include <freeipmi/freeipmi.h>
+#include "EpAiRecord.h"
 
 std::map<uint8_t, std::string> sdr_type_itos_map {
 	{IPMI_SDR_FORMAT_FULL_SENSOR_RECORD, "IPMI_SDR_FORMAT_FULL_SENSOR_RECORD"},
@@ -371,6 +373,7 @@ void parse_args(int argc, char const *argv[], std::map<std::string,std::string> 
 
 int main(int argc, char const *argv[]) {
     
+    EpAiRecord ai = EpAiRecord("$(P):S09_Temp1", "65:0:0:107", "1 second", "F", "1");
     //std::map<std::string,std::string> args;
     //parse_args(argc, argv, args);
     //return;

@@ -105,10 +105,17 @@ std::string IpmiFruDevLocRec::report() {
     return ss.str() + "\n";
 }
 
+/// IPMI_SENSOR_TYPE_FAN
+
 template<typename T>
 void IpmiFruDevLocRec::parse_sensors(std::vector<std::shared_ptr<T>> &sensor_list) {
     for(auto &rec: sensor_list) {
         if(rec->get_entity_id() == this->fru_entity_id) {
+            if(rec->get_entity_instance() == this->fru_entity_instance)
+                this->sensor_records.push_back(rec);
+        }
+        /** TODO: Make a note about how fans and cooling unit are missing from the device relative association record.*/
+        else if(this->fru_entity_id == IPMI_ENTITY_ID_COOLING_UNIT_COOLING_DOMAIN && rec->get_sensor_type() == IPMI_SENSOR_TYPE_FAN) {
             if(rec->get_entity_instance() == this->fru_entity_instance)
                 this->sensor_records.push_back(rec);
         }

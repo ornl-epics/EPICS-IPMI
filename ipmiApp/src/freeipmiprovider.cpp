@@ -192,7 +192,7 @@ void FreeIpmiProvider::openSdrCache()
     for(auto &fdlr: this->fruDevLocRecList) {
         fdlr.get()->parse_sensors(this->sensRecFullList);
         fdlr.get()->parse_sensors(this->sensRecCompactList);
-        ///std::cout << fdlr.get()->report();
+        std::cout << fdlr.get()->report();
     }
 }
 

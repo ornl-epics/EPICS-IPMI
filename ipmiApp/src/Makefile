@@ -31,6 +31,11 @@ SRC_DIRS += /ics/lib/freeipmi_1.6.11/include
 
 LIBRARY += epicsipmi
 epicsipmi_LIBS += freeipmi
+epicsipmi_SRCS += IpmiSdrRec.cpp
+epicsipmi_SRCS += IpmiSensorRecComp.cpp
+epicsipmi_SRCS += IpmiSensorRecFull.cpp
+epicsipmi_SRCS += IpmiFruDevLocRec.cpp
+
 epicsipmi_SRCS += epicsshell.cpp
 epicsipmi_SRCS += epicsdevice.cpp
 epicsipmi_SRCS += common.cpp

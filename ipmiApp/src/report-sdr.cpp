@@ -373,15 +373,14 @@ void parse_args(int argc, char const *argv[], std::map<std::string,std::string> 
 
 int main(int argc, char const *argv[]) {
     
-    EpAiRecord ai = EpAiRecord("$(P):S09_Temp1", "65:0:0:107", "1 second", "F", "1");
     //std::map<std::string,std::string> args;
     //parse_args(argc, argv, args);
     //return;
     const char *hostname = "192.168.201.141";
     const char *username = "";
     const char *password = "";
-    const char *authType = IPMI_AUTHENTICATION_TYPE_NONE;
-    const char *privLevel = IPMI_PRIVILEGE_LEVEL_ADMIN;
+    uint8_t authType = IPMI_AUTHENTICATION_TYPE_NONE;
+    uint8_t privLevel = IPMI_PRIVILEGE_LEVEL_ADMIN;
     int sessionTimeout = IPMI_SESSION_TIMEOUT_DEFAULT;
     int retransmissionTimeout = IPMI_RETRANSMISSION_TIMEOUT_DEFAULT;
     int workaroundFlags = IPMI_WORKAROUND_FLAGS_OUTOFBAND_AUTHENTICATION_CAPABILITIES;
@@ -501,7 +500,6 @@ int main(int argc, char const *argv[]) {
         fdlr->parse_sensors(sensRecFullList);
         fdlr->parse_sensors(sensRecCompactList);
         std::cout << fdlr->report();
-
     }
 
     

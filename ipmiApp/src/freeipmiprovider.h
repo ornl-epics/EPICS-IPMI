@@ -19,6 +19,8 @@
 #include <vector>
 
 #include <freeipmi/freeipmi.h>
+#include "IpmiSensorRecFull.h"
+#include "IpmiFruDevLocRec.h"
 
 class FreeIpmiProvider : public Provider
 {
@@ -29,6 +31,10 @@ class FreeIpmiProvider : public Provider
             ipmi_sensor_read_ctx_t sensors{nullptr};
             ipmi_fru_ctx_t fru{nullptr};
         } m_ctx;
+
+        std::vector<std::shared_ptr<IpmiSensorRecFull>> sensRecFullList;
+        std::vector<std::shared_ptr<IpmiSensorRecComp>> sensRecCompactList;
+        std::vector<std::shared_ptr<IpmiFruDevLocRec>> fruDevLocRecList;
 
         int m_sessionTimeout{IPMI_SESSION_TIMEOUT_DEFAULT};
         int m_retransmissionTimeout{IPMI_RETRANSMISSION_TIMEOUT_DEFAULT};

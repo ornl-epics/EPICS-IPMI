@@ -9,6 +9,7 @@
  */
 
 #include "freeipmiprovider.h"
+#include <iostream>
 
 FreeIpmiProvider::FreeIpmiProvider(const std::string& conn_id, const std::string& hostname,
                                    const std::string& username, const std::string& password,
@@ -148,113 +149,51 @@ void FreeIpmiProvider::openSdrCache()
         if (ipmi_sdr_cache_open(m_ctx.sdr, m_ctx.ipmi, m_sdrCachePath.c_str()) < 0)
             throw std::runtime_error("can't open SDR cache - " + std::string(ipmi_ctx_errormsg(m_ctx.ipmi)));
     }
+
     uint16_t record_count;
     int rv = ipmi_sdr_cache_record_count (m_ctx.sdr, &record_count);
     printf("**** Rec Count: %u\n", record_count);
-    
-    const void *sdr_record = NULL;
-    unsigned int sdr_record_len = 0;
+
     uint16_t record_id = 0;
     uint8_t record_type = 0;
+
     for(int i = 0; i < record_count; i++, ipmi_sdr_cache_next(m_ctx.sdr)) {
-    
-    rv = ipmi_sdr_parse_record_id_and_type (m_ctx.sdr,
-                                       sdr_record,
-                                       sdr_record_len,
-                                       &record_id,
-                                       &record_type);
-    printf("**** rv: %i, &record_id: %u, &record_type: %u\n", rv, record_id, record_type);
+        rv = ipmi_sdr_parse_record_id_and_type (m_ctx.sdr, nullptr, 0, &record_id, &record_type);
+        
+        if(record_type == IPMI_SDR_FORMAT_FULL_SENSOR_RECORD) {
+            this->sensRecFullList.push_back(std::make_shared<IpmiSensorRecFull>(m_ctx.sdr, record_id, record_type));
+        }
 
-    if(record_id == 104) {
-	    uint8_t sensor_reading_raw = 0;
-	    double *sensor_reading = NULL;
-	    uint16_t sensor_event_bitmask = 0;
-	    SdrRecord record;
+        if(record_type == IPMI_SDR_FORMAT_COMPACT_SENSOR_RECORD) {
+            this->sensRecCompactList.push_back(std::make_shared<IpmiSensorRecComp>(m_ctx.sdr, record_id, record_type));
+        }
 
+        if(record_type == IPMI_SDR_FORMAT_EVENT_ONLY_RECORD) {
+            ///TODO:
+            ;
+        }
 
-	    if (m_ctx.sensors)
-                ipmi_sensor_read_ctx_destroy(m_ctx.sensors);
-            m_ctx.sensors = ipmi_sensor_read_ctx_create(m_ctx.ipmi);
-	    int sensorReadFlags = 0;
-            sensorReadFlags |= IPMI_SENSOR_READ_FLAGS_BRIDGE_SENSORS;
-            /* Don't error out, if this fails we can still continue */
-            if (ipmi_sensor_read_ctx_set_flags(m_ctx.sensors, sensorReadFlags) < 0)
-                LOG_WARN("can't set sensor read flags - %s", ipmi_sensor_read_ctx_errormsg(m_ctx.sensors));
+        if(record_type == IPMI_SDR_FORMAT_DEVICE_RELATIVE_ENTITY_ASSOCIATION_RECORD) {
+            ///TODO:
+            ;
+        }
 
+        if(record_type == IPMI_SDR_FORMAT_FRU_DEVICE_LOCATOR_RECORD) {
+            this->fruDevLocRecList.push_back(std::make_shared<IpmiFruDevLocRec>(m_ctx.sdr, record_id, record_type));
+        }
 
-	    record.size = ipmi_sdr_cache_record_read(m_ctx.sdr, record.data, IPMI_SDR_MAX_RECORD_LENGTH);
-	    rv = ipmi_sensor_read (m_ctx.sensors,
-                      record.data,
-                      record.size,
-                      0,
-                      &sensor_reading_raw,
-                      &sensor_reading,
-                      &sensor_event_bitmask);
-	    printf("0000 rv: %i, Sensor Reading: %f\n",rv, *sensor_reading);
+        if(record_type == IPMI_SDR_FORMAT_MANAGEMENT_CONTROLLER_DEVICE_LOCATOR_RECORD) {
+            ///TODO:
+            ;
+        }
     }
+    ///printf("mcdlr: %i, fruDevLocRecList: %i, evntr: %i, SensRecFullList: %i, SensRecCompactList: %i\n", 0, fruDevLocRecList.size(), 0, sensRecFullList.size(), sensRecCompactList.size());
 
-    if(record_type == IPMI_SDR_FORMAT_FULL_SENSOR_RECORD || record_type == IPMI_SDR_FORMAT_COMPACT_SENSOR_RECORD){
-	    
-	    char id_string[100] = {'\0'};
-	    unsigned int id_string_len = 99;
-
-	    rv = ipmi_sdr_parse_id_string (m_ctx.sdr,
-                              sdr_record,
-                              sdr_record_len,
-                              &id_string[0],
-                              id_string_len);
-	    printf("**** rv: %i, id_string: %s, id_string_len: %i\n", rv, id_string, id_string_len);
-
-
-	    uint8_t entity_id = 0;
-	    uint8_t entity_instance = 0;
-	    uint8_t entity_instance_type = 0;
-
-	    ipmi_sdr_parse_entity_id_instance_type (m_ctx.sdr,
-                                            sdr_record,
-                                            sdr_record_len,
-                                            &entity_id,
-                                            &entity_instance,
-                                            &entity_instance_type);
-	    printf("**** rv: %i, &entity_id: %u, &entity_instance: %u, &entity_instance_type: %u\n",
-			    rv,entity_id,entity_instance,entity_instance_type);
+    for(auto &fdlr: this->fruDevLocRecList) {
+        fdlr.get()->parse_sensors(this->sensRecFullList);
+        fdlr.get()->parse_sensors(this->sensRecCompactList);
+        ///std::cout << fdlr.get()->report();
     }
-
-
-    if(record_type == 17){
-	    uint8_t fru_entity_id = 0;
-	    uint8_t fru_entity_instance = 0;
-            rv = ipmi_sdr_parse_fru_entity_id_and_instance (m_ctx.sdr,
-                                               sdr_record,
-                                               sdr_record_len,
-                                               &fru_entity_id,
-                                               &fru_entity_instance);
-	    printf("**** rv: %i, &fru_entity_id: %u, &fru_entity_instance: %u\n", rv, fru_entity_id,fru_entity_instance);
-
-	    uint8_t device_access_address = 0;
-            uint8_t logical_fru_device_device_slave_address = 0;
-            uint8_t private_bus_id = 0;
-            uint8_t lun_for_master_write_read_fru_command = 0;
-            uint8_t logical_physical_fru_device = 0;
-            uint8_t channel_number = 0;
-	    ipmi_sdr_parse_fru_device_locator_parameters (m_ctx.sdr,
-                                                  sdr_record,
-                                                  sdr_record_len,
-                                                  &device_access_address,
-                                                  &logical_fru_device_device_slave_address,
-                                                  &private_bus_id,
-                                                  &lun_for_master_write_read_fru_command,
-                                                  &logical_physical_fru_device,
-                                                  &channel_number);
-	    printf("**** rv: %i, %u, %u, %u, %u, %u, %u \n", device_access_address,
-			    logical_fru_device_device_slave_address,
-			    private_bus_id,
-			    lun_for_master_write_read_fru_command,
-			    logical_physical_fru_device,
-			    channel_number);
-    }
-    }
-
 }
 
 std::vector<FreeIpmiProvider::Entity> FreeIpmiProvider::getSensors()

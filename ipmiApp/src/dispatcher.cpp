@@ -16,6 +16,7 @@
 #include <cstring>
 #include <map>
 #include <string>
+#include <iostream>
 
 // EPICS records that we support
 #include <aiRecord.h>
@@ -32,6 +33,8 @@ static std::pair<std::string, std::string> _parseLink(const std::string& link)
     if (tokens.size() < 3 || tokens[0] != "ipmi")
         return std::make_pair(std::string(""), std::string(""));
 
+    std::cout << "link: " << link << std::endl;
+    std::cout << "t0: " << tokens[0] << ", t1: " << tokens[1] << ", t2: " << tokens[2] << std::endl;
     return std::make_pair(tokens[1], tokens[2]);
 }
 

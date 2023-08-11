@@ -12,6 +12,8 @@ IpmiSensorRecComp::IpmiSensorRecComp(ipmi_sdr_ctx_t sdr, uint16_t record_id, uin
 {
     int rv = (-1);
 
+    this->record_data.size = ipmi_sdr_cache_record_read(sdr, this->record_data.data, IPMI_SDR_MAX_RECORD_LENGTH);
+
     rv = ipmi_sdr_parse_sensor_owner_id (sdr, NULL, 0, &sensor_owner_id_type, &sensor_owner_id);
 
     rv = ipmi_sdr_parse_sensor_owner_lun (sdr, NULL, 0, &sensor_owner_lun, &channel_number);
@@ -70,3 +72,6 @@ uint8_t IpmiSensorRecComp::get_event_reading_type_code() {
     return this->event_reading_type_code;
 }
 
+const common::buffer<uint8_t, IPMI_SDR_MAX_RECORD_LENGTH> &IpmiSensorRecComp::get_record_data() {
+    return this->record_data;
+}

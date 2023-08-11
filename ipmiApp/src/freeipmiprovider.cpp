@@ -10,6 +10,7 @@
 
 #include "freeipmiprovider.h"
 #include <iostream>
+#include <sstream>
 
 FreeIpmiProvider::FreeIpmiProvider(const std::string& conn_id, const std::string& hostname,
                                    const std::string& username, const std::string& password,
@@ -67,6 +68,21 @@ FreeIpmiProvider::~FreeIpmiProvider()
     if (m_ctx.fru) {
         ipmi_fru_ctx_destroy(m_ctx.fru);
     }
+}
+const IpmiFruDevLocRec &FreeIpmiProvider::get_fru_by_device_slave_address(const uint8_t slave_address) {
+    for(auto &fru : this->fruDevLocRecList) {
+        if(fru->get_device_slave_address() == slave_address) {
+            return *fru;
+        }
+    }
+    std::stringstream ss;
+    ss << "ERROR: FRU address \'" << (unsigned) slave_address << "\' not found!\n";
+    throw std::invalid_argument(ss.str());
+}
+
+FreeIpmiProvider::Entity FreeIpmiProvider::get_entity_value(const IpmiSensorRecComp &sdrRec) {
+    Entity entity = read_sensor(m_ctx.sdr, m_ctx.sensors, sdrRec);
+    return entity;
 }
 
 void FreeIpmiProvider::connect()
@@ -192,8 +208,9 @@ void FreeIpmiProvider::openSdrCache()
     for(auto &fdlr: this->fruDevLocRecList) {
         fdlr.get()->parse_sensors(this->sensRecFullList);
         fdlr.get()->parse_sensors(this->sensRecCompactList);
-        std::cout << fdlr.get()->report();
+        ///std::cout << fdlr.get()->report();
     }
+
 }
 
 std::vector<FreeIpmiProvider::Entity> FreeIpmiProvider::getSensors()

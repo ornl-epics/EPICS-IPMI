@@ -17,6 +17,7 @@
 #include <list>
 #include <map>
 #include <vector>
+#include "IpmiSensorRecComp.h"
 
 #if __cplusplus > 201402L
 #include <variant>
@@ -99,10 +100,12 @@ class Provider {
             std::string address;
             std::function<void()> callback;
             Entity& entity;
-            Task(const std::string& address_, const std::function<void()>& cb, Entity& entity_)
+            const IpmiSensorRecComp &sdrRec;
+            Task(const IpmiSensorRecComp &sdrRec_, const std::string& address_, const std::function<void()>& cb, Entity& entity_)
                 : address(address_)
                 , callback(cb)
                 , entity(entity_)
+                , sdrRec(sdrRec_)
             {};
         };
 
@@ -173,4 +176,5 @@ class Provider {
          * @return current value
          */
         virtual Entity getEntity(const std::string& address) = 0;
+        virtual Entity get_entity_value(const IpmiSensorRecComp &sdrRec) = 0;
 };

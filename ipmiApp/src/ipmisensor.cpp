@@ -12,6 +12,7 @@
 
 #include <alarm.h> // from EPICS
 #include <cmath>
+#include "IpmiSensorRecComp.h"
 
 FreeIpmiProvider::Entity FreeIpmiProvider::getSensor(ipmi_sdr_ctx_t sdr, ipmi_sensor_read_ctx_t sensors, const SensorAddress& address)
 {
@@ -43,6 +44,24 @@ FreeIpmiProvider::Entity FreeIpmiProvider::getSensor(ipmi_sdr_ctx_t sdr, ipmi_se
     } while (ipmi_sdr_cache_next(sdr) == 1);
 
     throw Provider::comm_error("sensor not found");
+}
+
+FreeIpmiProvider::Entity FreeIpmiProvider::read_sensor(ipmi_sdr_ctx_t sdr, ipmi_sensor_read_ctx_t sensors, const IpmiSensorRecComp &record) {
+    Entity entity;
+    int sharedOffset = 0; // TODO: shared sensors support
+    uint8_t readingRaw = 0;
+    double* reading = nullptr;
+    uint16_t eventMask = 0;
+    const common::buffer<uint8_t, IPMI_SDR_MAX_RECORD_LENGTH> data = record.get_record_data();
+
+    int rv = ipmi_sensor_read(sensors, data.data, data.size, sharedOffset, &readingRaw, &reading, &eventMask);
+    if(reading) {
+        entity["VAL"] = std::round(*reading * 100.0) / 100.0;
+        ///printf("reading: %f\n", std::round(*reading * 100.0) / 100.0);
+    }
+    else
+        entity["VAL"] = readingRaw;
+    return entity;
 }
 
 FreeIpmiProvider::Entity FreeIpmiProvider::getSensor(ipmi_sdr_ctx_t sdr, ipmi_sensor_read_ctx_t sensors, const SdrRecord& record)

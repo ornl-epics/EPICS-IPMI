@@ -134,6 +134,10 @@ class FreeIpmiProvider : public Provider
          */
         ~FreeIpmiProvider();
 
+        const IpmiFruDevLocRec &get_fru_by_device_slave_address(const uint8_t slave_address);
+        Entity get_entity_value(const IpmiSensorRecComp &sdrRec) override;
+        static Entity read_sensor(ipmi_sdr_ctx_t sdr, ipmi_sensor_read_ctx_t sensors, const IpmiSensorRecComp &record);
+
         /**
          * @brief Scans for all sensors in the connected IPMI device.
          * @return A list of sensors

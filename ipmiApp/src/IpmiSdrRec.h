@@ -10,6 +10,8 @@
 
 #include <cstdint>
 #include <string>
+#include "common.h"
+#include <freeipmi/freeipmi.h>
 
 class IpmiSdrRec
 {
@@ -17,6 +19,7 @@ protected:
     uint16_t record_id;
     uint8_t record_type;
     std::string device_id_string;
+    common::buffer<uint8_t, IPMI_SDR_MAX_RECORD_LENGTH> record_data;
 public:
     IpmiSdrRec(uint16_t record_id, uint8_t record_type);
     ~IpmiSdrRec();

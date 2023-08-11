@@ -37,6 +37,7 @@ public:
     uint8_t get_entity_instance();
     uint8_t get_sensor_type();
     uint8_t get_event_reading_type_code();
+    const common::buffer<uint8_t, IPMI_SDR_MAX_RECORD_LENGTH> &get_record_data();
 };
 
 #endif

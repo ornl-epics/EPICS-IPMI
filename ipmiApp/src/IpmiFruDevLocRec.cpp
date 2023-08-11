@@ -105,8 +105,6 @@ std::string IpmiFruDevLocRec::report() {
     return ss.str() + "\n";
 }
 
-/// IPMI_SENSOR_TYPE_FAN
-
 template<typename T>
 void IpmiFruDevLocRec::parse_sensors(std::vector<std::shared_ptr<T>> &sensor_list) {
     for(auto &rec: sensor_list) {
@@ -124,3 +122,18 @@ void IpmiFruDevLocRec::parse_sensors(std::vector<std::shared_ptr<T>> &sensor_lis
 
 template void IpmiFruDevLocRec::parse_sensors(std::vector<std::shared_ptr<IpmiSensorRecComp>> &sensor_list);
 template void IpmiFruDevLocRec::parse_sensors(std::vector<std::shared_ptr<IpmiSensorRecFull>> &sensor_list);
+
+uint8_t IpmiFruDevLocRec::get_device_slave_address() {
+    return this->logical_fru_device_device_slave_address;
+}
+
+const IpmiSensorRecComp &IpmiFruDevLocRec::get_sensor_by_sensor_number(uint8_t number) {
+    for(auto &sens : this->sensor_records) {
+        if(sens->get_sensor_number() == number) {
+            return *sens;
+        }
+    }
+    std::stringstream ss;
+    ss << "ERROR: Sensor number \'" << (unsigned) number << "\' not found!\n";
+    throw std::invalid_argument(ss.str());
+}

@@ -17,6 +17,7 @@
 #include <map>
 #include <string>
 #include <iostream>
+#include <sstream>
 
 // EPICS records that we support
 #include <aiRecord.h>
@@ -26,6 +27,18 @@ namespace dispatcher {
 
 static std::map<std::string, std::shared_ptr<FreeIpmiProvider>> g_connections; //!< Global map of connections.
 static epicsMutex g_mutex; //!< Global mutex to protect g_connections.
+
+/// @brief Split string on whitespaces and place tokens into vector
+/// @param tokens 
+/// @param link 
+static void parse_inout_str(std::vector<std::string> &tokens, const std::string &link) {
+    std::stringstream ss(link);
+    std::string tok;
+    
+    while(ss >> tok) {
+        tokens.push_back(tok);
+    }
+}
 
 static std::pair<std::string, std::string> _parseLink(const std::string& link)
 {
@@ -168,18 +181,55 @@ void printDb(const std::string& conn_id, const std::string& path, const std::str
 
 bool checkLink(const std::string& address)
 {
-    auto conn = _getConnection( _parseLink(address).first );
+    ///auto conn = _getConnection( _parseLink(address).first );
+    std::vector<std::string> tokens;
+
+    ///TODO: Add throw. Strict parsing on number of tokens.
+    parse_inout_str(tokens, address);
+    
+    /** First find the connection*/
+    auto conn = _getConnection(tokens.at(0));
+    if(!conn)
+        return (!!conn);
+    
+    /** Second find the FRU*/
+    std::string s = tokens.at(1).erase(0, 1);
+    IpmiFruDevLocRec frec = conn->get_fru_by_device_slave_address(std::stoi(s, nullptr, 10));
+
+    s = tokens.at(2).erase(0, 1);
+    IpmiSensorRecComp recComp = frec.get_sensor_by_sensor_number(std::stoi(s, nullptr, 10));
+
     return (!!conn);
 }
 
 bool scheduleGet(const std::string& address, const std::function<void()>& cb, Provider::Entity& entity)
 {
+    ///auto conn = _getConnection( _parseLink(address).first );
+    std::vector<std::string> tokens;
+
+    ///TODO: Add throw. Strict parsing on number of tokens.
+    parse_inout_str(tokens, address);
+    
+    /** First find the connection*/
+    auto conn = _getConnection(tokens.at(0));
+    if(!conn)
+        return (!!conn);
+    /**
     auto addr = _parseLink(address);
     auto conn = _getConnection(addr.first);
     if (!conn)
         return false;
+    */
 
-    return conn->schedule( Provider::Task(std::move(addr.second), cb, entity) );
+   /** Second find the FRU*/
+    std::string s = tokens.at(1).erase(0, 1);
+    IpmiFruDevLocRec frec = conn->get_fru_by_device_slave_address(std::stoi(s, nullptr, 10));
+
+    s = tokens.at(2).erase(0, 1);
+    IpmiSensorRecComp recComp = frec.get_sensor_by_sensor_number(std::stoi(s, nullptr, 10));
+
+    ///return conn->schedule( Provider::Task(recComp, std::move(addr.second), cb, entity) );
+    return conn->schedule( Provider::Task(recComp, s, cb, entity) );
 }
 
 }; // namespace dispatcher

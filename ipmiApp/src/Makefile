@@ -63,6 +63,10 @@ epicsipmi_SRCS += ipmipicmg.cpp
 # Read/Report SDR Repository from device
 PROD_HOST += report-sdr
 report-sdr_SRCS += report-sdr.cpp
+report-sdr_SRCS += IpmiSdrRec.cpp
+report-sdr_SRCS += IpmiSensorRecComp.cpp
+report-sdr_SRCS += IpmiSensorRecFull.cpp
+report-sdr_SRCS += IpmiFruDevLocRec.cpp
 report-sdr_SRCS += EpRecord.cpp
 report-sdr_SRCS += EpAiRecord.cpp
 report-sdr_LIBS += freeipmi

@@ -1,4 +1,4 @@
 # EPICS_BASE should appear last so earlier modules can override stuff:
 EPICS_BASE = /ics/epics/7.0.4.1/base
-
+FREE_IPMI = /ics/lib/freeipmi_1.6.11
 

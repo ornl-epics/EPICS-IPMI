@@ -25,9 +25,9 @@ DBD += epicsipmi.dbd
 #ipmi_LIBS += xxx
 #ipmi_LIBS += freeipmi
 LIB_LIBS += freeipmi
-freeipmi_DIR = /ics/lib/freeipmi_1.6.11/lib/
+freeipmi_DIR = $(FREE_IPMI)/lib/
 
-SRC_DIRS += /ics/lib/freeipmi_1.6.11/include
+SRC_DIRS += $(FREE_IPMI)/include
 
 LIBRARY += epicsipmi
 epicsipmi_LIBS += freeipmi

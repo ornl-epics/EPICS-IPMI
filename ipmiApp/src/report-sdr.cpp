@@ -209,18 +209,15 @@ int main(int argc, char const *argv[]) {
         ipmi_open_cache();
         ipmi_parse_sdr();
         
-        for(std::shared_ptr<IpmiFruDevLocRec> &fdlr: fruDevLocRecList) {
+        for(auto &fdlr: fruDevLocRecList) {
             fdlr->parse_sensors(sensRecFullList);
             fdlr->parse_sensors(sensRecCompactList);
             std::cout << fdlr->report();
         }
 
-        
-
         for(auto &obj : fruDevLocRecList) {
             std::vector<std::shared_ptr<EpRecord>> eprList;
             
-            std::cout << obj->get_device_id_string() << ":" << (unsigned) obj->get_device_slave_address() << std::endl;
             for(auto &sensor : obj->get_sensors()) {
                 std::shared_ptr<EpRecord> epr = EpRecord::create(obj->get_device_slave_address(), *sensor);
                 eprList.push_back(epr);

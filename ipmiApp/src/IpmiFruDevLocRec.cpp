@@ -137,3 +137,7 @@ const IpmiSensorRecComp &IpmiFruDevLocRec::get_sensor_by_sensor_number(uint8_t n
     ss << "ERROR: Sensor number \'" << (unsigned) number << "\' not found!\n";
     throw std::invalid_argument(ss.str());
 }
+
+std::vector<std::shared_ptr<IpmiSensorRecComp>> &IpmiFruDevLocRec::get_sensors() {
+    return this->sensor_records;
+}

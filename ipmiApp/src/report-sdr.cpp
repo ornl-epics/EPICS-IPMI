@@ -16,7 +16,7 @@
 #include <iostream>
 #include <type_traits>
 #include <freeipmi/freeipmi.h>
-#include "EpAiRecord.h"
+#include "EpRecord.h"
 #include "IpmiSensorRecFull.h"
 #include "IpmiFruDevLocRec.h"
 
@@ -146,6 +146,7 @@ void ipmi_parse_sdr() {
 
     uint16_t record_count;
     int rv = ipmi_sdr_cache_record_count (sdr, &record_count);
+    
     printf("**** Rec Count: %u\n", record_count);
 
     const void *sdr_record = NULL;
@@ -202,18 +203,32 @@ int main(int argc, char const *argv[]) {
         parse_args(argc, argv, cli_args_map);
 
         ///FYI: Test-Host (VT811) IP is "192.168.201.141";
+
         ipmi_init();
         ipmi_connect();
         ipmi_open_cache();
         ipmi_parse_sdr();
-        
-
         
         for(std::shared_ptr<IpmiFruDevLocRec> &fdlr: fruDevLocRecList) {
             fdlr->parse_sensors(sensRecFullList);
             fdlr->parse_sensors(sensRecCompactList);
             std::cout << fdlr->report();
         }
+
+        
+
+        for(auto &obj : fruDevLocRecList) {
+            std::vector<std::shared_ptr<EpRecord>> eprList;
+            
+            std::cout << obj->get_device_id_string() << ":" << (unsigned) obj->get_device_slave_address() << std::endl;
+            for(auto &sensor : obj->get_sensors()) {
+                std::shared_ptr<EpRecord> epr = EpRecord::create(obj->get_device_slave_address(), *sensor);
+                eprList.push_back(epr);
+                std::cout << epr->to_string() << std::endl;
+            }
+
+        }
+
     }
     catch(const std::exception& e) {
         std::cerr << e.what() << '\n';

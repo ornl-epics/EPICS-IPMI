@@ -24,7 +24,8 @@ EpAiRecord::EpAiRecord(std::string name, std::string inout, std::string scanrate
     std::string egu, std::string prec)
 : EpRecord(rec_type::AI, link_type::INP, name, inout, scanrate)
 {
-
+    add_field("EGU", egu);
+    add_field("PREC", prec);
 }
 
 EpAiRecord::~EpAiRecord()

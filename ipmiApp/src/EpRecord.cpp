@@ -6,6 +6,10 @@
 */
 
 #include "EpRecord.h"
+#include "EpAiRecord.h"
+#include <algorithm>
+#include <sstream>
+
 
 EpRecord::EpRecord(rec_type rtyp, link_type d, std::string name, std::string inout, std::string scanrate)
 : rectyp(rtyp), linktype(d)
@@ -32,12 +36,10 @@ int EpRecord::add_field(const std::vector<std::string> &valid_fields, const std:
     
     for(auto &vf: valid_fields) {
         if(field_name == vf) {
-            std::cout << "valid name" << std::endl;
             this->fields[this->fields.size()][field_name] = field_value;
             return 0;
         }
     }
-    std::cout << "Invalid name" << std::endl;
     return -1;
 }
 
@@ -51,4 +53,29 @@ std::string EpRecord::to_string() {
     }
     ss << "}\n\n";
     return ss.str();
+}
+
+static std::shared_ptr<EpRecord> EpRecord::create(const uint16_t fru_addr, const IpmiSensorRecComp &irecord) {
+    
+    std::string dev_id_str = irecord.get_device_id_string();
+    /** Replace all spaces (' ') with underscores ('_').*/
+    std::replace(dev_id_str.begin(), dev_id_str.end(), ' ', '_');
+
+    std::string name = "$(P):FRU";
+    name += std::to_string(fru_addr);
+    name += "_";
+    name += dev_id_str;
+
+    std::string inout = "@<dev> F";
+    inout += std::to_string(fru_addr);
+    inout += " S";
+    inout += std::to_string(irecord.get_sensor_number());
+
+    std::string egu = "";
+    if(irecord.get_sensor_base_unit_type_str() != "unspecified") {
+        egu += irecord.get_sensor_base_unit_type_str();
+    }
+    
+    std::shared_ptr<EpRecord> epr = std::make_shared<EpRecord>(EpAiRecord(name, inout, "1 second", egu, "1"));
+    return epr;
 }

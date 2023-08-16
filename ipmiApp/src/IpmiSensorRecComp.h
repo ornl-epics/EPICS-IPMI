@@ -24,6 +24,11 @@ private:
     uint8_t entity_instance_type;
     uint8_t sensor_type;
     uint8_t event_reading_type_code;
+    uint8_t sensor_units_percentage;
+    uint8_t sensor_units_modifier;
+    uint8_t sensor_units_rate;
+    uint8_t sensor_base_unit_type;
+    uint8_t sensor_modifier_unit_type;
 
 public:
     IpmiSensorRecComp(ipmi_sdr_ctx_t sdr, uint16_t record_id, uint8_t record_type);
@@ -37,6 +42,9 @@ public:
     uint8_t get_entity_instance();
     uint8_t get_sensor_type();
     uint8_t get_event_reading_type_code();
+    uint8_t get_sensor_base_unit_type();
+    std::string get_sensor_base_unit_type_str();
+
     const common::buffer<uint8_t, IPMI_SDR_MAX_RECORD_LENGTH> &get_record_data();
 };
 

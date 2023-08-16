@@ -30,6 +30,12 @@ IpmiSensorRecComp::IpmiSensorRecComp(ipmi_sdr_ctx_t sdr, uint16_t record_id, uin
     rv = ipmi_sdr_parse_id_string (sdr, NULL, 0, &id_str[0], IPMI_SDR_MAX_SENSOR_NAME_LENGTH);
     this->device_id_string = id_str;
 
+    rv = ipmi_sdr_parse_sensor_units (sdr, NULL, 0, &sensor_units_percentage, &sensor_units_modifier,
+    &sensor_units_rate, &sensor_base_unit_type, &sensor_modifier_unit_type);
+
+    /**printf("%s, [%u, %u, %u, %u, %u]\n", id_str, sensor_units_percentage, sensor_units_modifier,
+    sensor_units_rate, sensor_base_unit_type, sensor_modifier_unit_type);*/
+
 }
 
 IpmiSensorRecComp::~IpmiSensorRecComp()
@@ -70,6 +76,17 @@ uint8_t IpmiSensorRecComp::get_sensor_type() {
 
 uint8_t IpmiSensorRecComp::get_event_reading_type_code() {
     return this->event_reading_type_code;
+}
+
+uint8_t IpmiSensorRecComp::get_sensor_base_unit_type() {
+    return this->sensor_base_unit_type;
+}
+
+std::string IpmiSensorRecComp::get_sensor_base_unit_type_str() {
+    if(IPMI_SENSOR_UNIT_VALID(this->sensor_base_unit_type)) {
+        return std::string(ipmi_sensor_units_abbreviated[this->sensor_base_unit_type]);
+    }
+    return std::string("Invalid-Type");
 }
 
 const common::buffer<uint8_t, IPMI_SDR_MAX_RECORD_LENGTH> &IpmiSensorRecComp::get_record_data() {

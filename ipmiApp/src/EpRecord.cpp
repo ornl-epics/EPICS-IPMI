@@ -76,6 +76,5 @@ static std::shared_ptr<EpRecord> EpRecord::create(const uint16_t fru_addr, const
         egu += irecord.get_sensor_base_unit_type_str();
     }
     
-    std::shared_ptr<EpRecord> epr = std::make_shared<EpRecord>(EpAiRecord(name, inout, "1 second", egu, "1"));
-    return epr;
+    return std::make_shared<EpRecord>(EpAiRecord(name, inout, "1 second", egu, "1"));
 }

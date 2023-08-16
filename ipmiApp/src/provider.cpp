@@ -60,6 +60,7 @@ bool Provider::schedule(const Task&& task)
 void Provider::tasksThread()
 {
     while (m_tasks.processing) {
+        
         m_tasks.mutex.lock();
 
         if (m_tasks.queue.empty()) {

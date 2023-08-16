@@ -197,7 +197,7 @@ bool checkLink(const std::string& address)
     IpmiFruDevLocRec frec = conn->get_fru_by_device_slave_address(std::stoi(s, nullptr, 10));
 
     s = tokens.at(2).erase(0, 1);
-    IpmiSensorRecComp recComp = frec.get_sensor_by_sensor_number(std::stoi(s, nullptr, 10));
+    const IpmiSensorRecComp *recComp = frec.get_sensor_by_sensor_number(std::stoi(s, nullptr, 10));
 
     return (!!conn);
 }
@@ -226,10 +226,10 @@ bool scheduleGet(const std::string& address, const std::function<void()>& cb, Pr
     IpmiFruDevLocRec frec = conn->get_fru_by_device_slave_address(std::stoi(s, nullptr, 10));
 
     s = tokens.at(2).erase(0, 1);
-    IpmiSensorRecComp recComp = frec.get_sensor_by_sensor_number(std::stoi(s, nullptr, 10));
+    const IpmiSensorRecComp *recComp = frec.get_sensor_by_sensor_number(std::stoi(s, nullptr, 10));
 
     ///return conn->schedule( Provider::Task(recComp, std::move(addr.second), cb, entity) );
-    return conn->schedule( Provider::Task(recComp, s, cb, entity) );
+    return conn->schedule( Provider::Task(*recComp, s, cb, entity) );
 }
 
 }; // namespace dispatcher

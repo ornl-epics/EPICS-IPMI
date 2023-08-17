@@ -57,10 +57,13 @@ FreeIpmiProvider::Entity FreeIpmiProvider::read_sensor(ipmi_sdr_ctx_t sdr, ipmi_
     int rv = ipmi_sensor_read(sensors, data.data, data.size, sharedOffset, &readingRaw, &reading, &eventMask);
     if(reading) {
         entity["VAL"] = std::round(*reading * 100.0) / 100.0;
-        ///printf("reading: %f\n", std::round(*reading * 100.0) / 100.0);
     }
     else
         entity["VAL"] = readingRaw;
+    
+    if(reading) {
+        free(reading);
+    }
     return entity;
 }
 

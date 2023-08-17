@@ -34,7 +34,7 @@ public:
     template<typename T>
     void parse_sensors(std::vector<std::shared_ptr<T>> &sensor_list);
     uint8_t get_device_slave_address();
-    const IpmiSensorRecComp *get_sensor_by_sensor_number(uint8_t number);
+    const IpmiSensorRecComp &get_sensor_by_sensor_number(uint8_t number);
     std::vector<std::shared_ptr<IpmiSensorRecComp>> &get_sensors();
 };
 

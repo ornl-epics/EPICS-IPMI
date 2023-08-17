@@ -52,7 +52,7 @@ FreeIpmiProvider::Entity FreeIpmiProvider::read_sensor(ipmi_sdr_ctx_t sdr, ipmi_
     uint8_t readingRaw = 0;
     double* reading = nullptr;
     uint16_t eventMask = 0;
-    const common::buffer<uint8_t, IPMI_SDR_MAX_RECORD_LENGTH> data = record.get_record_data();
+    const common::buffer<uint8_t, IPMI_SDR_MAX_RECORD_LENGTH> &data = record.get_record_data();
 
     int rv = ipmi_sensor_read(sensors, data.data, data.size, sharedOffset, &readingRaw, &reading, &eventMask);
     if(reading) {

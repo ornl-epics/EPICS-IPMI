@@ -50,6 +50,8 @@ FreeIpmiProvider::FreeIpmiProvider(const std::string& conn_id, const std::string
     initContexts();
     openSdrCache();
     readSdrCache();
+    std::cout << "sdrv: " << (unsigned) this->m_SdrVersion << ", "
+    << (unsigned) this->m_SdrAdditionTimestamp << ", " << (unsigned) this->m_SdrEraseTimestamp << std::endl;
 }
 
 FreeIpmiProvider::~FreeIpmiProvider()
@@ -84,6 +86,17 @@ const IpmiFruDevLocRec &FreeIpmiProvider::get_fru_by_device_slave_address(const 
 }
 
 FreeIpmiProvider::Entity FreeIpmiProvider::get_entity_value(const IpmiSensorRecComp &sdrRec) {
+
+    /** First check to see if this sensor matches the SDR. The SDR can change underneith us.
+     * See Section 33.5 "Reading the SDR Repository" of the IPMI Specification.
+    */
+
+    if(compareSdrRecordKeys(m_ctx.sdr, sdrRec) != 0) {
+        ///TODO: Dump the current IpmiSensorRecComp objects and reread the SDR
+        std::stringstream ss;
+        ss << "SDR key for \'" << sdrRec.get_device_id_string() << "\' does not match key in repository." << std::endl;
+        throw std::runtime_error(ss.str());
+    }
     Entity entity = read_sensor(m_ctx.sdr, m_ctx.sensors, sdrRec);
     return entity;
 }

@@ -36,6 +36,11 @@ class FreeIpmiProvider : public Provider
         std::vector<std::shared_ptr<IpmiSensorRecComp>> sensRecCompactList;
         std::vector<std::shared_ptr<IpmiFruDevLocRec>> fruDevLocRecList;
 
+        uint8_t m_SdrVersion;
+        uint32_t m_SdrAdditionTimestamp;
+        uint32_t m_SdrEraseTimestamp;
+        uint16_t m_SdrRecordCount;
+
         int m_sessionTimeout{IPMI_SESSION_TIMEOUT_DEFAULT};
         int m_retransmissionTimeout{IPMI_RETRANSMISSION_TIMEOUT_DEFAULT};
         int m_cipherSuiteId{3};

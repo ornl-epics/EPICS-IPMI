@@ -93,6 +93,7 @@ void FreeIpmiProvider::initContexts() {
     initIpmiContext();
     connect();
     initSdrContext();
+    /** Sensor context will fail if connection hasn't been opened yet.*/
     initSensorsContext();
 }
 
@@ -199,29 +200,25 @@ void FreeIpmiProvider::openSdrCache()
 }
 
 void FreeIpmiProvider::readSdrCache() {
-    uint8_t sdr_version;
-    uint32_t most_recent_addition_timestamp;
-    uint32_t most_recent_erase_timestamp;
 
-    int xv1 = ipmi_sdr_cache_sdr_version (m_ctx.sdr, &sdr_version);
+    if(ipmi_sdr_cache_sdr_version (m_ctx.sdr, &this->m_SdrVersion) < 0)
+        throw std::runtime_error("Error! Could not read SDR cache version.");
 
-    int xv2 = ipmi_sdr_cache_most_recent_addition_timestamp (m_ctx.sdr, &most_recent_addition_timestamp);
-    int xv3 = ipmi_sdr_cache_most_recent_erase_timestamp (m_ctx.sdr, &most_recent_erase_timestamp);
+    if(ipmi_sdr_cache_most_recent_addition_timestamp (m_ctx.sdr, &this->m_SdrAdditionTimestamp) < 0)
+        throw std::runtime_error("Error! Could not read SDR cache most recent addition timestamp.");
 
-    std::cout << "SDR Version: " << (unsigned) sdr_version << ", most_recent_addition_timestamp: " <<
-    (unsigned) most_recent_addition_timestamp << ", most_recent_erase_timestamp: " << 
-    (unsigned) most_recent_erase_timestamp << ", xv1: " << xv1 << ", xv2: "<< xv2 << ", xv3: " << xv3 << std::endl;
+    if(ipmi_sdr_cache_most_recent_erase_timestamp (m_ctx.sdr, &this->m_SdrEraseTimestamp) < 0)
+        throw std::runtime_error("Error! Could not read SDR cache most recent erase timestamp.");
 
-
-    uint16_t record_count;
-    int rv = ipmi_sdr_cache_record_count (m_ctx.sdr, &record_count);
-    printf("**** Rec Count: %u\n", record_count);
+    if(ipmi_sdr_cache_record_count (m_ctx.sdr, &this->m_SdrRecordCount) < 0)
+        throw std::runtime_error("Error! Could not read SDR cache record count.");
+    printf("**** Rec Count: %u\n", this->m_SdrRecordCount);
 
     uint16_t record_id = 0;
     uint8_t record_type = 0;
 
-    for(int i = 0; i < record_count; i++, ipmi_sdr_cache_next(m_ctx.sdr)) {
-        rv = ipmi_sdr_parse_record_id_and_type (m_ctx.sdr, nullptr, 0, &record_id, &record_type);
+    for(int i = 0; i < this->m_SdrRecordCount; i++, ipmi_sdr_cache_next(m_ctx.sdr)) {
+        int rv = ipmi_sdr_parse_record_id_and_type (m_ctx.sdr, nullptr, 0, &record_id, &record_type);
         
         if(record_type == IPMI_SDR_FORMAT_FULL_SENSOR_RECORD) {
             this->sensRecFullList.push_back(std::make_shared<IpmiSensorRecFull>(m_ctx.sdr, record_id, record_type));

@@ -47,7 +47,9 @@ FreeIpmiProvider::FreeIpmiProvider(const std::string& conn_id, const std::string
     m_sdrCachePath = "/tmp/ipmi_sdr_" + conn_id + ".cache";
 
     // TODO: automatic connection management
-    connect();
+    initContexts();
+    openSdrCache();
+    readSdrCache();
 }
 
 FreeIpmiProvider::~FreeIpmiProvider()
@@ -69,6 +71,7 @@ FreeIpmiProvider::~FreeIpmiProvider()
         ipmi_fru_ctx_destroy(m_ctx.fru);
     }
 }
+
 const IpmiFruDevLocRec &FreeIpmiProvider::get_fru_by_device_slave_address(const uint8_t slave_address) {
     for(auto &fru : this->fruDevLocRecList) {
         if(fru->get_device_slave_address() == slave_address) {
@@ -85,10 +88,21 @@ FreeIpmiProvider::Entity FreeIpmiProvider::get_entity_value(const IpmiSensorRecC
     return entity;
 }
 
-void FreeIpmiProvider::connect()
-{
-    const char* username_ = (m_username.empty() ? nullptr : m_username.c_str());
-    const char* password_ = (m_password.empty() ? nullptr : m_password.c_str());
+void FreeIpmiProvider::initContexts() {
+    destroyContexts();
+    initIpmiContext();
+    connect();
+    initSdrContext();
+    initSensorsContext();
+}
+
+void FreeIpmiProvider::destroyContexts() {
+
+    if (m_ctx.sensors)
+        ipmi_sensor_read_ctx_destroy(m_ctx.sensors);
+
+    if (m_ctx.fru)
+        ipmi_fru_ctx_destroy(m_ctx.fru);
 
     if (m_ctx.sdr) {
         ipmi_sdr_ctx_destroy(m_ctx.sdr);
@@ -98,15 +112,50 @@ void FreeIpmiProvider::connect()
         ipmi_ctx_close(m_ctx.ipmi);
         ipmi_ctx_destroy(m_ctx.ipmi);
     }
+
+}
+
+void FreeIpmiProvider::initIpmiContext() {
+
     m_ctx.ipmi = ipmi_ctx_create();
+
     if (!m_ctx.ipmi)
         throw std::runtime_error("can't create IPMI context");
+}
+
+void FreeIpmiProvider::initSdrContext() {
 
     m_ctx.sdr = ipmi_sdr_ctx_create();
+
     if (!m_ctx.sdr)
         throw std::runtime_error("can't create IPMI SDR context");
+}
+
+void FreeIpmiProvider::initSensorsContext() {
+    m_ctx.sensors = ipmi_sensor_read_ctx_create(m_ctx.ipmi);
+    if (!m_ctx.sensors)
+        throw std::runtime_error("can't create IPMI sensor context");
+    
+    int sensorReadFlags = 0;
+    sensorReadFlags |= IPMI_SENSOR_READ_FLAGS_BRIDGE_SENSORS;
+    /* Don't error out, if this fails we can still continue */
+    if (ipmi_sensor_read_ctx_set_flags(m_ctx.sensors, sensorReadFlags) < 0)
+        LOG_WARN("can't set sensor read flags - %s", ipmi_sensor_read_ctx_errormsg(m_ctx.sensors));
+}
+
+void FreeIpmiProvider::initFruContext() {
+    m_ctx.fru = ipmi_fru_ctx_create(m_ctx.ipmi);
+    if (!m_ctx.fru)
+        throw std::runtime_error("can't create IPMI FRU context");
+}
+
+void FreeIpmiProvider::connect()
+{
+    const char* username_ = (m_username.empty() ? nullptr : m_username.c_str());
+    const char* password_ = (m_password.empty() ? nullptr : m_password.c_str());
 
     int connected;
+
     if (m_protocol == "lan_2.0") {
         connected = ipmi_ctx_open_outofband_2_0(
                         m_ctx.ipmi, m_hostname.c_str(), username_, password_,
@@ -118,29 +167,10 @@ void FreeIpmiProvider::connect()
                         m_authType, m_privLevel,
                         m_sessionTimeout, m_retransmissionTimeout, m_workaroundFlags, m_flags);
 	printf("connected....%d\n", connected);
+
     }
     if (connected < 0)
         throw std::runtime_error("can't connect - " + std::string(ipmi_ctx_errormsg(m_ctx.ipmi)));
-
-    openSdrCache();
-
-    if (m_ctx.sensors)
-        ipmi_sensor_read_ctx_destroy(m_ctx.sensors);
-    m_ctx.sensors = ipmi_sensor_read_ctx_create(m_ctx.ipmi);
-    if (!m_ctx.sensors)
-        throw std::runtime_error("can't create IPMI sensor context");
-
-    if (m_ctx.fru)
-        ipmi_fru_ctx_destroy(m_ctx.fru);
-    m_ctx.fru = ipmi_fru_ctx_create(m_ctx.ipmi);
-    if (!m_ctx.fru)
-        throw std::runtime_error("can't create IPMI FRU context");
-
-    int sensorReadFlags = 0;
-    sensorReadFlags |= IPMI_SENSOR_READ_FLAGS_BRIDGE_SENSORS;
-    /* Don't error out, if this fails we can still continue */
-    if (ipmi_sensor_read_ctx_set_flags(m_ctx.sensors, sensorReadFlags) < 0)
-        LOG_WARN("can't set sensor read flags - %s", ipmi_sensor_read_ctx_errormsg(m_ctx.sensors));
 
     m_connected = true;
 }
@@ -165,6 +195,23 @@ void FreeIpmiProvider::openSdrCache()
         if (ipmi_sdr_cache_open(m_ctx.sdr, m_ctx.ipmi, m_sdrCachePath.c_str()) < 0)
             throw std::runtime_error("can't open SDR cache - " + std::string(ipmi_ctx_errormsg(m_ctx.ipmi)));
     }
+
+}
+
+void FreeIpmiProvider::readSdrCache() {
+    uint8_t sdr_version;
+    uint32_t most_recent_addition_timestamp;
+    uint32_t most_recent_erase_timestamp;
+
+    int xv1 = ipmi_sdr_cache_sdr_version (m_ctx.sdr, &sdr_version);
+
+    int xv2 = ipmi_sdr_cache_most_recent_addition_timestamp (m_ctx.sdr, &most_recent_addition_timestamp);
+    int xv3 = ipmi_sdr_cache_most_recent_erase_timestamp (m_ctx.sdr, &most_recent_erase_timestamp);
+
+    std::cout << "SDR Version: " << (unsigned) sdr_version << ", most_recent_addition_timestamp: " <<
+    (unsigned) most_recent_addition_timestamp << ", most_recent_erase_timestamp: " << 
+    (unsigned) most_recent_erase_timestamp << ", xv1: " << xv1 << ", xv2: "<< xv2 << ", xv3: " << xv3 << std::endl;
+
 
     uint16_t record_count;
     int rv = ipmi_sdr_cache_record_count (m_ctx.sdr, &record_count);

@@ -157,6 +157,14 @@ class FreeIpmiProvider : public Provider
         std::vector<Entity> getPicmgLeds() override;
 
     private:
+
+        void initContexts();
+        void destroyContexts();
+        void initIpmiContext();
+        void initSdrContext();
+        void initSensorsContext();
+        void initFruContext();
+
         /**
          * @brief Tries to (re)connect to IPMI device
          * @return true on success
@@ -168,6 +176,8 @@ class FreeIpmiProvider : public Provider
          * @return
          */
         void openSdrCache();
+
+        void readSdrCache();
 
         /**
          * @brief Based on the address, determine IPMI entity type and retrieve its current value.

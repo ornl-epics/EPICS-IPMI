@@ -36,7 +36,7 @@ class FreeIpmiProvider : public Provider
         std::vector<std::shared_ptr<IpmiSensorRecComp>> sensRecCompactList;
         std::vector<std::shared_ptr<IpmiFruDevLocRec>> fruDevLocRecList;
 
-        std::map<const IpmiSensorRecComp * const, uint16_t> recmap;
+        std::map<std::shared_ptr<IpmiSensorRecComp>, uint16_t> recmap;
 
         uint8_t m_SdrVersion;
         uint32_t m_SdrAdditionTimestamp;
@@ -143,7 +143,8 @@ class FreeIpmiProvider : public Provider
         ~FreeIpmiProvider();
 
         const IpmiFruDevLocRec &get_fru_by_device_slave_address(const uint8_t slave_address);
-        Entity get_entity_value(const IpmiSensorRecComp &sdrRec) override;
+        ///Entity get_entity_value(const IpmiSensorRecComp &sdrRec) override;
+        Entity get_entity_value(std::shared_ptr<IpmiSensorRecComp> sdrRec) override;
         static Entity read_sensor(ipmi_sdr_ctx_t sdr, ipmi_sensor_read_ctx_t sensors, const IpmiSensorRecComp &record);
         static int compareSdrRecordKeys(ipmi_sdr_ctx_t sdr, const IpmiSensorRecComp &record);
 

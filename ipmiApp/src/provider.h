@@ -100,8 +100,10 @@ class Provider {
             std::string address;
             std::function<void()> callback;
             Entity& entity;
-            const IpmiSensorRecComp &sdrRec;
-            Task(const IpmiSensorRecComp &sdrRec_, const std::string& address_, const std::function<void()>& cb, Entity& entity_)
+            std::shared_ptr<IpmiSensorRecComp> sdrRec;
+            ///const IpmiSensorRecComp &sdrRec;
+            ///Task(const IpmiSensorRecComp &sdrRec_, const std::string& address_, const std::function<void()>& cb, Entity& entity_)
+            Task(std::shared_ptr<IpmiSensorRecComp> sdrRec_, const std::string& address_, const std::function<void()>& cb, Entity& entity_)
                 : address(address_)
                 , callback(cb)
                 , entity(entity_)
@@ -176,5 +178,6 @@ class Provider {
          * @return current value
          */
         virtual Entity getEntity(const std::string& address) = 0;
-        virtual Entity get_entity_value(const IpmiSensorRecComp &sdrRec) = 0;
+        ///virtual Entity get_entity_value(const IpmiSensorRecComp &sdrRec) = 0;
+        virtual Entity get_entity_value(std::shared_ptr<IpmiSensorRecComp> sdrRec) = 0;
 };

@@ -228,8 +228,11 @@ bool scheduleGet(const std::string& address, const std::function<void()>& cb, Pr
     s = tokens.at(2).erase(0, 1);
     const IpmiSensorRecComp &recComp = frec.get_sensor_by_sensor_number(std::stoi(s, nullptr, 10));
 
+    std::shared_ptr<IpmiSensorRecComp> sp = frec.get_sensor_by_sensor_number2(std::stoi(s, nullptr, 10));
+
     ///return conn->schedule( Provider::Task(recComp, std::move(addr.second), cb, entity) );
-    return conn->schedule( Provider::Task(recComp, s, cb, entity) );
+    ///return conn->schedule( Provider::Task(recComp, s, cb, entity) );
+    return conn->schedule( Provider::Task(sp, s, cb, entity) );
 }
 
 }; // namespace dispatcher

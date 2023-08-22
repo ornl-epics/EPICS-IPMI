@@ -86,17 +86,18 @@ const IpmiFruDevLocRec &FreeIpmiProvider::get_fru_by_device_slave_address(const 
     throw std::invalid_argument(ss.str());
 }
 int counter = 0;
-FreeIpmiProvider::Entity FreeIpmiProvider::get_entity_value(const IpmiSensorRecComp &sdrRec) {
+FreeIpmiProvider::Entity FreeIpmiProvider::get_entity_value(std::shared_ptr<IpmiSensorRecComp> sdrRec) {
 
     /** First check to see if this sensor matches the SDR. The SDR can change underneith us.
      * See Section 33.5 "Reading the SDR Repository" of the IPMI Specification.
     */
     counter += 1;
-    if(compareSdrRecordKeys(m_ctx.sdr, sdrRec) != 0 || counter >= 30) {
+    std::cout << "sdrRec.use_count(): " << sdrRec.use_count() << std::endl;
+    if(compareSdrRecordKeys(m_ctx.sdr, *sdrRec) != 0 || counter >= 30) {
         ///TODO: Dump the current IpmiSensorRecComp objects and reread the SDR
         std::stringstream ss;
-        std::map<const IpmiSensorRecComp * const, uint16_t>::iterator itr;
-        itr = this->recmap.find(&sdrRec);
+        std::map<std::shared_ptr<IpmiSensorRecComp>, uint16_t>::iterator itr;
+        itr = this->recmap.find(sdrRec);
         ss << "Connection-ID: \'" << this->m_ConnectionId << "\', ";
         ss << "Hostname: \'" << this->m_hostname << "\', ";
         if(itr != this->recmap.end()) {
@@ -104,10 +105,10 @@ FreeIpmiProvider::Entity FreeIpmiProvider::get_entity_value(const IpmiSensorRecC
         }
         else
             ss << "SDR key for FRU: \'FRU-Id is Unavailable\' and Sensor-ID: \'";
-        ss << sdrRec.get_device_id_string() << "\' does not match key in repository." << std::endl;
+        ss << sdrRec.get()->get_device_id_string() << "\' does not match key in repository." << std::endl;
         throw std::runtime_error(ss.str());
     }
-    Entity entity = read_sensor(m_ctx.sdr, m_ctx.sensors, sdrRec);
+    Entity entity = read_sensor(m_ctx.sdr, m_ctx.sensors, *sdrRec);
     return entity;
 }
 
@@ -280,7 +281,7 @@ void FreeIpmiProvider::readSdrCache() {
     for(auto &fdlr : this->fruDevLocRecList) {
         std::vector<std::shared_ptr<IpmiSensorRecComp>> &sensrs = fdlr.get()->get_sensors();
         for(auto &a : sensrs) {
-            this->recmap.insert({a.get(), fdlr.get()->get_device_slave_address()});
+            this->recmap.insert({a, fdlr.get()->get_device_slave_address()});
         }
     }
 

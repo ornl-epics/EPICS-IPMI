@@ -50,6 +50,7 @@ class FreeIpmiProvider : public Provider
         unsigned char* m_k_g{nullptr};
         int m_workaroundFlags{1};
         int m_flags{IPMI_FLAGS_DEFAULT};
+        std::string m_ConnectionId;
         std::string m_hostname;
         std::string m_username;
         std::string m_password;

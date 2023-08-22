@@ -22,6 +22,7 @@ FreeIpmiProvider::FreeIpmiProvider(const std::string& conn_id, const std::string
     , m_password(password)
     , m_protocol(protocol)
     , m_nextReconnect{epicsTime::getCurrent()}
+    , m_ConnectionId(conn_id)
 {
     if (authtype == "none" || username.empty())
         m_authType = IPMI_AUTHENTICATION_TYPE_NONE;
@@ -93,10 +94,17 @@ FreeIpmiProvider::Entity FreeIpmiProvider::get_entity_value(const IpmiSensorRecC
     counter += 1;
     if(compareSdrRecordKeys(m_ctx.sdr, sdrRec) != 0 || counter >= 30) {
         ///TODO: Dump the current IpmiSensorRecComp objects and reread the SDR
+        std::stringstream ss;
         std::map<const IpmiSensorRecComp * const, uint16_t>::iterator itr;
         itr = this->recmap.find(&sdrRec);
-        std::stringstream ss;
-        ss << "SDR key for FRU: \'" << itr->second << "\', sensor: \'" << sdrRec.get_device_id_string() << "\' does not match key in repository." << std::endl;
+        ss << "Connection-ID: \'" << this->m_ConnectionId << "\', ";
+        ss << "Hostname: \'" << this->m_hostname << "\', ";
+        if(itr != this->recmap.end()) {
+            ss << "SDR key for FRU: \'" << itr->second << "\' and Sensor-ID: \'";
+        }
+        else
+            ss << "SDR key for FRU: \'FRU-Id is Unavailable\' and Sensor-ID: \'";
+        ss << sdrRec.get_device_id_string() << "\' does not match key in repository." << std::endl;
         throw std::runtime_error(ss.str());
     }
     Entity entity = read_sensor(m_ctx.sdr, m_ctx.sensors, sdrRec);

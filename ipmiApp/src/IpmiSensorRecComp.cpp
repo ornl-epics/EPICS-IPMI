@@ -89,6 +89,6 @@ std::string IpmiSensorRecComp::get_sensor_base_unit_type_str() const {
     return std::string("Invalid-Type");
 }
 
-const common::buffer<uint8_t, IPMI_SDR_MAX_RECORD_LENGTH> &IpmiSensorRecComp::get_record_data() {
+const common::buffer<uint8_t, IPMI_SDR_MAX_RECORD_LENGTH> &IpmiSensorRecComp::get_record_data() const {
     return this->record_data;
 }

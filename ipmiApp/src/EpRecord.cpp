@@ -12,7 +12,7 @@
 
 
 EpRecord::EpRecord(rec_type rtyp, link_type d, std::string name, std::string inout, std::string scanrate)
-: rectyp(rtyp), linktype(d)
+: linktype(d), rectyp(rtyp)
 {
     this->fields[0]["NAME"] = name;
     this->fields[1]["DTYP"] = "ipmi";
@@ -55,7 +55,7 @@ std::string EpRecord::to_string() {
     return ss.str();
 }
 
-static std::shared_ptr<EpRecord> EpRecord::create(const uint16_t fru_addr, const IpmiSensorRecComp &irecord) {
+std::shared_ptr<EpRecord> EpRecord::create(const uint16_t fru_addr, const IpmiSensorRecComp &irecord) {
     
     std::string dev_id_str = irecord.get_device_id_string();
     /** Replace all spaces (' ') with underscores ('_').*/

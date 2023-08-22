@@ -33,17 +33,15 @@ struct IpmiRecord {
 template<typename T>
 long initInpRecord(T* rec)
 {
-    try
-    {
+    try {
         /** The connection has already been initialized and the SDR read.
          * So this call will not only verify the connection is correct but
          * it will also verify that the FRU and Sensor number exist.
         */
         dispatcher::checkLink(rec->inp.value.instio.string);
     }
-    catch(const std::exception& e)
-    {
-        std::cerr << e.what() << '\n';
+    catch(const std::exception &e) {
+        std::cerr << "ERROR: Record \'" << rec->name << "\' " << e.what() << '\n';
         if (rec->tpro == 1) {
             LOG_ERROR("invalid record link or no connection");
         }

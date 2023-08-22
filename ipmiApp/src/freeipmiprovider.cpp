@@ -81,20 +81,22 @@ const IpmiFruDevLocRec &FreeIpmiProvider::get_fru_by_device_slave_address(const 
         }
     }
     std::stringstream ss;
-    ss << "ERROR: FRU address \'" << (unsigned) slave_address << "\' not found!\n";
+    ss << "FRU address \'" << (unsigned) slave_address << "\' not found!\n";
     throw std::invalid_argument(ss.str());
 }
-
+int counter = 0;
 FreeIpmiProvider::Entity FreeIpmiProvider::get_entity_value(const IpmiSensorRecComp &sdrRec) {
 
     /** First check to see if this sensor matches the SDR. The SDR can change underneith us.
      * See Section 33.5 "Reading the SDR Repository" of the IPMI Specification.
     */
-
-    if(compareSdrRecordKeys(m_ctx.sdr, sdrRec) != 0) {
+    counter += 1;
+    if(compareSdrRecordKeys(m_ctx.sdr, sdrRec) != 0 || counter >= 30) {
         ///TODO: Dump the current IpmiSensorRecComp objects and reread the SDR
+        std::map<const IpmiSensorRecComp * const, uint16_t>::iterator itr;
+        itr = this->recmap.find(&sdrRec);
         std::stringstream ss;
-        ss << "SDR key for \'" << sdrRec.get_device_id_string() << "\' does not match key in repository." << std::endl;
+        ss << "SDR key for FRU: \'" << itr->second << "\', sensor: \'" << sdrRec.get_device_id_string() << "\' does not match key in repository." << std::endl;
         throw std::runtime_error(ss.str());
     }
     Entity entity = read_sensor(m_ctx.sdr, m_ctx.sensors, sdrRec);
@@ -266,6 +268,12 @@ void FreeIpmiProvider::readSdrCache() {
         fdlr.get()->parse_sensors(this->sensRecFullList);
         fdlr.get()->parse_sensors(this->sensRecCompactList);
         ///std::cout << fdlr.get()->report();
+    }
+    for(auto &fdlr : this->fruDevLocRecList) {
+        std::vector<std::shared_ptr<IpmiSensorRecComp>> &sensrs = fdlr.get()->get_sensors();
+        for(auto &a : sensrs) {
+            this->recmap.insert({a.get(), fdlr.get()->get_device_slave_address()});
+        }
     }
 
 }

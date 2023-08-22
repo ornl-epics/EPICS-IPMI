@@ -66,9 +66,9 @@ void printDb(const std::string& connection_id, const std::string& path, const st
 /**
  * @brief Verify that record link is indeed valid IPMI address
  * @param address to be checked
- * @return true if link points to connected IPMI sub-system, false otherwise
+ * @throw Throws exception
  */
-bool checkLink(const std::string& address);
+void checkLink(const std::string& address);
 
 /**
  * @brief Finds existing IPMI sub-system and schedules asynchronous processing.

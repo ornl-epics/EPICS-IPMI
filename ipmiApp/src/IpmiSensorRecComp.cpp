@@ -42,47 +42,47 @@ IpmiSensorRecComp::~IpmiSensorRecComp()
 {
 }
 
-uint8_t IpmiSensorRecComp::get_sensor_owner_id_type() {
+uint8_t IpmiSensorRecComp::get_sensor_owner_id_type() const {
     return this->sensor_owner_id_type;
 }
 
-uint8_t IpmiSensorRecComp::get_sensor_owner_id() {
+uint8_t IpmiSensorRecComp::get_sensor_owner_id() const {
     return this->sensor_owner_id;
 }
 
-uint8_t IpmiSensorRecComp::get_sensor_owner_lun() {
+uint8_t IpmiSensorRecComp::get_sensor_owner_lun() const {
     return this->sensor_owner_lun;
 }
 
-uint8_t IpmiSensorRecComp::get_channel_number() {
+uint8_t IpmiSensorRecComp::get_channel_number() const {
     return this->channel_number;
 }
 
-uint8_t IpmiSensorRecComp::get_sensor_number() {
+uint8_t IpmiSensorRecComp::get_sensor_number() const {
     return this->sensor_number;
 }
 
-uint8_t IpmiSensorRecComp::get_entity_id() {
+uint8_t IpmiSensorRecComp::get_entity_id() const {
     return this->entity_id;
 }
 
-uint8_t IpmiSensorRecComp::get_entity_instance() {
+uint8_t IpmiSensorRecComp::get_entity_instance() const {
     return this->entity_instance;
 }
 
-uint8_t IpmiSensorRecComp::get_sensor_type() {
+uint8_t IpmiSensorRecComp::get_sensor_type() const {
     return this->sensor_type;
 }
 
-uint8_t IpmiSensorRecComp::get_event_reading_type_code() {
+uint8_t IpmiSensorRecComp::get_event_reading_type_code() const {
     return this->event_reading_type_code;
 }
 
-uint8_t IpmiSensorRecComp::get_sensor_base_unit_type() {
+uint8_t IpmiSensorRecComp::get_sensor_base_unit_type() const {
     return this->sensor_base_unit_type;
 }
 
-std::string IpmiSensorRecComp::get_sensor_base_unit_type_str() {
+std::string IpmiSensorRecComp::get_sensor_base_unit_type_str() const {
     if(IPMI_SENSOR_UNIT_VALID(this->sensor_base_unit_type)) {
         return std::string(ipmi_sensor_units_abbreviated[this->sensor_base_unit_type]);
     }

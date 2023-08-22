@@ -128,14 +128,14 @@ uint8_t IpmiFruDevLocRec::get_device_slave_address() {
     return this->logical_fru_device_device_slave_address;
 }
 
-const IpmiSensorRecComp &IpmiFruDevLocRec::get_sensor_by_sensor_number(uint8_t number) {
+const IpmiSensorRecComp &IpmiFruDevLocRec::get_sensor_by_sensor_number(uint8_t number) const {
     for(auto &sens : this->sensor_records) {
         if(sens->get_sensor_number() == number) {
             return *sens.get();
         }
     }
     std::stringstream ss;
-    ss << "ERROR: Sensor number \'" << (unsigned) number << "\' not found!\n";
+    ss << "Sensor number \'" << (unsigned) number << "\' not found!\n";
     throw std::invalid_argument(ss.str());
 }
 

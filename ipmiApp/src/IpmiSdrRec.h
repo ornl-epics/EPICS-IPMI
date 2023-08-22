@@ -23,9 +23,9 @@ protected:
 public:
     IpmiSdrRec(uint16_t record_id, uint8_t record_type);
     ~IpmiSdrRec();
-    uint16_t get_record_id();
-    uint8_t get_record_type();
-    std::string get_device_id_string();
+    uint16_t get_record_id() const;
+    uint8_t get_record_type() const;
+    std::string get_device_id_string() const;
 
 };
 

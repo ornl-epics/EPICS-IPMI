@@ -179,18 +179,19 @@ void printDb(const std::string& conn_id, const std::string& path, const std::str
     fclose(dbfile);
 }
 
-bool checkLink(const std::string& address)
-{
-    ///auto conn = _getConnection( _parseLink(address).first );
+void checkLink(const std::string& address) {
     std::vector<std::string> tokens;
 
-    ///TODO: Add throw. Strict parsing on number of tokens.
     parse_inout_str(tokens, address);
+
+    if(tokens.size() < 3) {
+        throw std::invalid_argument("Link field does not have enough parameters. \'" + address + "\'");
+    }
     
     /** First find the connection*/
     auto conn = _getConnection(tokens.at(0));
     if(!conn)
-        return (!!conn);
+        throw std::invalid_argument("Link field can't find device \'@" + tokens.at(0) + "\'");
     
     /** Second find the FRU*/
     std::string s = tokens.at(1).erase(0, 1);
@@ -199,7 +200,6 @@ bool checkLink(const std::string& address)
     s = tokens.at(2).erase(0, 1);
     const IpmiSensorRecComp &recComp = frec.get_sensor_by_sensor_number(std::stoi(s, nullptr, 10));
 
-    return (!!conn);
 }
 
 bool scheduleGet(const std::string& address, const std::function<void()>& cb, Provider::Entity& entity)

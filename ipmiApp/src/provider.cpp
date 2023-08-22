@@ -84,7 +84,7 @@ void Provider::tasksThread()
                 task.entity[kv.first] = std::move(kv.second);
             }
 
-        } catch (std::runtime_error& e) {
+        } catch (std::runtime_error &e) {
             task.entity["SEVR"] = (int)epicsSevInvalid;
             task.entity["STAT"] = (int)epicsAlarmComm;
             LOG_ERROR(e.what());

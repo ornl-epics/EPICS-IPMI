@@ -45,6 +45,12 @@ static std::map<std::string, LinkOptions> s_mapLinkOptions = {
 /// @param link 
 static void parse_inout_str(std::map<std::string, std::string> &argMap, const std::string &link) {
 
+    /** 
+     * We are looking for inout string signatures like the following:
+     * <device> F<FRU number> SN <sensor-number>
+     * <device> F<FRU number> SID <sensor-id-string>
+    */
+
     std::vector<std::string> tokens;
     std::stringstream ss(link);
     std::string tok;
@@ -53,14 +59,32 @@ static void parse_inout_str(std::map<std::string, std::string> &argMap, const st
         tokens.push_back(tok);
     }
 
+    /* So, we must have at least 3 tokens to get this party started.*/
+    if(tokens.size() < 3) {
+        throw std::invalid_argument("Link field does not have enough parameters. \'" + link + "\'");
+    }
+
+    /* Connection ID is first. */
     argMap["cid"] = tokens.at(0);
+
+    /* FRU ID is next. */
     argMap["fru"] = tokens.at(1).erase(0,1);
 
+    /* Last is the SENSOR identifier... for now... Later will add something for LEDS
+     * Currently there are two different options for identifying sensors:
+     * (1) We can identify them by sensor number. E.g., SN 33.
+     * (2) We can identify them by sensor id string. E.g., SID VT AMC523 12V
+     *  Option (2) can contain spaces. It is annoying but that is the way the vendors
+     *  do it.
+     */
     switch (s_mapLinkOptions[tokens.at(2)]) {
+
+        /*(1)*/
         case LinkOptions::SN:
             argMap["sn"] = tokens.at(3);
             break;
 
+        /*(2)*/
         case LinkOptions::SID:
             std::vector<std::string>::iterator itr = tokens.begin();
             std::advance(itr, 3);
@@ -72,8 +96,9 @@ static void parse_inout_str(std::map<std::string, std::string> &argMap, const st
             }
             break;
         
+        /* Neither options were found; let's throw! */
         default:
-            break;
+            throw std::invalid_argument("Link field does not contain options after FRU. \'" + link + "\'");
     }
 }
 
@@ -216,18 +241,14 @@ void printDb(const std::string& conn_id, const std::string& path, const std::str
     fclose(dbfile);
 }
 
+/** Just veriry that the link field is valid and that we can touch the
+ *  objects defined.
+*/
 void checkLink(const std::string& address) {
     
     std::map<std::string, std::string> argMap;
 
     parse_inout_str(argMap, address);
-
-    
-    /** TODO: Fix this. 
-    if(tokens.size() < 3) {
-        throw std::invalid_argument("Link field does not have enough parameters. \'" + address + "\'");
-    }
-    **/
 
     /** First find the connection*/
     auto conn = _getConnection(argMap["cid"]);
@@ -237,7 +258,16 @@ void checkLink(const std::string& address) {
     /** Second find the FRU*/
     std::shared_ptr<IpmiFruDevLocRec> frec = conn->get_fru_by_device_slave_address(std::stoi(argMap["fru"], nullptr, 10));
 
-    std::shared_ptr<IpmiSensorRecComp> sp = frec->get_sensor_by_sensor_number(std::stoi(argMap["sn"], nullptr, 10));
+    /** Are we identifying this record by sensor number or id string?*/
+    if(argMap.find("sn") != argMap.end()) {
+        std::shared_ptr<IpmiSensorRecComp> sp = frec->get_sensor_by_sensor_number(std::stoi(argMap["sn"], nullptr, 10));
+    }
+    else if(argMap.find("sid") != argMap.end()) {
+        std::shared_ptr<IpmiSensorRecComp> sp = frec->get_sensor_by_sensor_id_string(argMap["sid"]);
+    }
+    else    /* We should have already thrown at this point*/
+        throw std::runtime_error("Sensor parameter invalid in link field....");
+    
 
 }
 
@@ -256,8 +286,17 @@ bool scheduleGet(const std::string& address, const std::function<void()>& cb, Pr
    /** Second find the FRU*/
     std::string s;
     std::shared_ptr<IpmiFruDevLocRec> frec = conn->get_fru_by_device_slave_address(std::stoi(argMap["fru"], nullptr, 10));
+    std::shared_ptr<IpmiSensorRecComp> sp;
 
-    std::shared_ptr<IpmiSensorRecComp> sp = frec->get_sensor_by_sensor_number(std::stoi(argMap["sn"], nullptr, 10));
+    /** Are we identifying this record by sensor number or id string?*/
+    if(argMap.find("sn") != argMap.end()) {
+        sp = frec->get_sensor_by_sensor_number(std::stoi(argMap["sn"], nullptr, 10));
+    }
+    else if(argMap.find("sid") != argMap.end()) {
+        sp = frec->get_sensor_by_sensor_id_string(argMap["sid"]);
+    }
+    else    /* We should have already thrown at this point*/
+        throw std::runtime_error("Sensor parameter invalid in link field....");
 
     return conn->schedule( Provider::Task(sp, s, cb, entity) );
 }

@@ -51,8 +51,7 @@ FreeIpmiProvider::FreeIpmiProvider(const std::string& conn_id, const std::string
     initContexts();
     openSdrCache();
     readSdrCache();
-    std::cout << "sdrv: " << (unsigned) this->m_SdrVersion << ", "
-    << (unsigned) this->m_SdrAdditionTimestamp << ", " << (unsigned) this->m_SdrEraseTimestamp << std::endl;
+    
 }
 
 FreeIpmiProvider::~FreeIpmiProvider()
@@ -97,10 +96,10 @@ FreeIpmiProvider::Entity FreeIpmiProvider::get_entity_value(std::shared_ptr<Ipmi
         ///TODO: Dump the current IpmiSensorRecComp objects and reread the SDR
         std::stringstream ss;
         std::map<std::shared_ptr<IpmiSensorRecComp>, uint16_t>::iterator itr;
-        itr = this->recmap.find(sdrRec);
+        itr = this->m_SensToFruMap.find(sdrRec);
         ss << "Connection-ID: \'" << this->m_ConnectionId << "\', ";
         ss << "Hostname: \'" << this->m_hostname << "\', ";
-        if(itr != this->recmap.end()) {
+        if(itr != this->m_SensToFruMap.end()) {
             ss << "SDR key for FRU: \'" << itr->second << "\' and Sensor-ID: \'";
         }
         else
@@ -191,12 +190,13 @@ void FreeIpmiProvider::connect()
                         m_ctx.ipmi, m_hostname.c_str(), username_, password_,
                         m_authType, m_privLevel,
                         m_sessionTimeout, m_retransmissionTimeout, m_workaroundFlags, m_flags);
-	printf("connected....%d\n", connected);
 
     }
     if (connected < 0)
         throw std::runtime_error("can't connect - " + std::string(ipmi_ctx_errormsg(m_ctx.ipmi)));
 
+    std::cout << "Connected successfully to \'" << this->m_ConnectionId << "\' at \'"
+    << this->m_hostname << "\'" << std::endl;
     m_connected = true;
 }
 
@@ -225,29 +225,45 @@ void FreeIpmiProvider::openSdrCache()
 
 void FreeIpmiProvider::readSdrCache() {
 
+    /* Get the SDR version. */
     if(ipmi_sdr_cache_sdr_version (m_ctx.sdr, &this->m_SdrVersion) < 0)
         throw std::runtime_error("Error! Could not read SDR cache version.");
 
+    /* Get the SDR most recent addition timestamp */
     if(ipmi_sdr_cache_most_recent_addition_timestamp (m_ctx.sdr, &this->m_SdrAdditionTimestamp) < 0)
         throw std::runtime_error("Error! Could not read SDR cache most recent addition timestamp.");
 
+    /* Get the SDR most recent erase timestamp */
     if(ipmi_sdr_cache_most_recent_erase_timestamp (m_ctx.sdr, &this->m_SdrEraseTimestamp) < 0)
         throw std::runtime_error("Error! Could not read SDR cache most recent erase timestamp.");
 
+    /* Get the SDR record count */
     if(ipmi_sdr_cache_record_count (m_ctx.sdr, &this->m_SdrRecordCount) < 0)
         throw std::runtime_error("Error! Could not read SDR cache record count.");
-    printf("**** Rec Count: %u\n", this->m_SdrRecordCount);
+    
+    std::cout << this->m_ConnectionId << ":" << this->m_hostname << " SDR Info {" << std::endl;
+    std::cout << " * SDR Record Count: " << m_SdrRecordCount << "," << std::endl;
+    std::cout << " * SDR Version: " << (unsigned) this->m_SdrVersion << "," << std::endl;
+    std::cout << " * SDR Addition Timestamp: " << (unsigned) this->m_SdrAdditionTimestamp << "," << std::endl;
+    std::cout << " * SDR Erase Timestamp: " << (unsigned) this->m_SdrEraseTimestamp << std::endl;
+    std::cout << "}" << std::endl;
 
     uint16_t record_id = 0;
     uint8_t record_type = 0;
 
+    /* Iterate through all of the records in the SDR and create sensor lists as needed. */
     for(int i = 0; i < this->m_SdrRecordCount; i++, ipmi_sdr_cache_next(m_ctx.sdr)) {
-        int rv = ipmi_sdr_parse_record_id_and_type (m_ctx.sdr, nullptr, 0, &record_id, &record_type);
+        if(ipmi_sdr_parse_record_id_and_type (m_ctx.sdr, nullptr, 0, &record_id, &record_type)<0)
+            throw std::runtime_error("Could not read record ID and record type in SDR.");
         
+        /* Add this record type to the list. When constructor is called we read more sensor data */
         if(record_type == IPMI_SDR_FORMAT_FULL_SENSOR_RECORD) {
             this->sensRecFullList.push_back(std::make_shared<IpmiSensorRecFull>(m_ctx.sdr, record_id, record_type));
         }
-
+        
+        /* Add this record type to the list. Compact and Full are so close to the same.
+         * When constructor is called we read more sensor data
+         */
         if(record_type == IPMI_SDR_FORMAT_COMPACT_SENSOR_RECORD) {
             this->sensRecCompactList.push_back(std::make_shared<IpmiSensorRecComp>(m_ctx.sdr, record_id, record_type));
         }
@@ -261,7 +277,10 @@ void FreeIpmiProvider::readSdrCache() {
             ///TODO:
             ;
         }
-
+        
+        /* Add this record type to the list. This record type is useful for grouping sensor based on
+         * FRU to sensor relationships. 
+         */
         if(record_type == IPMI_SDR_FORMAT_FRU_DEVICE_LOCATOR_RECORD) {
             this->fruDevLocRecList.push_back(std::make_shared<IpmiFruDevLocRec>(m_ctx.sdr, record_id, record_type));
         }
@@ -271,17 +290,18 @@ void FreeIpmiProvider::readSdrCache() {
             ;
         }
     }
-    ///printf("mcdlr: %i, fruDevLocRecList: %i, evntr: %i, SensRecFullList: %i, SensRecCompactList: %i\n", 0, fruDevLocRecList.size(), 0, sensRecFullList.size(), sensRecCompactList.size());
 
+    /* Iterate through all of the FRU Device Locator Records and attach sensors to their paren FRUs */
     for(auto &fdlr: this->fruDevLocRecList) {
         fdlr.get()->parse_sensors(this->sensRecFullList);
         fdlr.get()->parse_sensors(this->sensRecCompactList);
-        ///std::cout << fdlr.get()->report();
     }
+
+    /* Create a reverse lookup map so the sensor can find its parent FRU. */
     for(auto &fdlr : this->fruDevLocRecList) {
         std::vector<std::shared_ptr<IpmiSensorRecComp>> &sensrs = fdlr.get()->get_sensors();
-        for(auto &a : sensrs) {
-            this->recmap.insert({a, fdlr.get()->get_device_slave_address()});
+        for(auto &sensr : sensrs) {
+            this->m_SensToFruMap.insert({sensr, fdlr.get()->get_device_slave_address()});
         }
     }
 

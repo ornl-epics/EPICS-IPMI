@@ -36,7 +36,7 @@ long initInpRecord(T* rec)
     try {
         /** The connection has already been initialized and the SDR read.
          * So this call will not only verify the connection is correct but
-         * it will also verify that the FRU and Sensor number exist.
+         * it will also verify that the FRU and Sensor exist.
         */
         dispatcher::checkLink(rec->inp.value.instio.string);
     }

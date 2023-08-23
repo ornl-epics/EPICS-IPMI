@@ -36,7 +36,7 @@ class FreeIpmiProvider : public Provider
         std::vector<std::shared_ptr<IpmiSensorRecComp>> sensRecCompactList;
         std::vector<std::shared_ptr<IpmiFruDevLocRec>> fruDevLocRecList;
 
-        std::map<std::shared_ptr<IpmiSensorRecComp>, uint16_t> recmap;
+        std::map<std::shared_ptr<IpmiSensorRecComp>, uint16_t> m_SensToFruMap;
 
         uint8_t m_SdrVersion;
         uint32_t m_SdrAdditionTimestamp;

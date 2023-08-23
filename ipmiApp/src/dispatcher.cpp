@@ -27,16 +27,53 @@ namespace dispatcher {
 
 static std::map<std::string, std::shared_ptr<FreeIpmiProvider>> g_connections; //!< Global map of connections.
 static epicsMutex g_mutex; //!< Global mutex to protect g_connections.
+enum LinkOptions {
+    NOT_DEFINED,
+    SID,    /** Sensor ID String */
+    SN      /** Sensor Number */
 
-/// @brief Split string on whitespaces and place tokens into vector
-/// @param tokens 
+};
+
+static std::map<std::string, LinkOptions> s_mapLinkOptions = {
+    {"null", LinkOptions::NOT_DEFINED},
+    {"SID", LinkOptions::SID},
+    {"SN", LinkOptions::SN}
+    };
+
+/// @brief Split string on whitespaces and place tokens into map
+/// @param argmap 
 /// @param link 
-static void parse_inout_str(std::vector<std::string> &tokens, const std::string &link) {
+static void parse_inout_str(std::map<std::string, std::string> &argMap, const std::string &link) {
+
+    std::vector<std::string> tokens;
     std::stringstream ss(link);
     std::string tok;
     
     while(ss >> tok) {
         tokens.push_back(tok);
+    }
+
+    argMap["cid"] = tokens.at(0);
+    argMap["fru"] = tokens.at(1).erase(0,1);
+
+    switch (s_mapLinkOptions[tokens.at(2)]) {
+        case LinkOptions::SN:
+            argMap["sn"] = tokens.at(3);
+            break;
+
+        case LinkOptions::SID:
+            std::vector<std::string>::iterator itr = tokens.begin();
+            std::advance(itr, 3);
+            while(itr != tokens.end()) {
+                argMap["sid"] += *(itr++);
+                if(itr != tokens.end()) {
+                    argMap["sid"] += " ";
+                }
+            }
+            break;
+        
+        default:
+            break;
     }
 }
 
@@ -180,58 +217,48 @@ void printDb(const std::string& conn_id, const std::string& path, const std::str
 }
 
 void checkLink(const std::string& address) {
-    std::vector<std::string> tokens;
+    
+    std::map<std::string, std::string> argMap;
 
-    parse_inout_str(tokens, address);
+    parse_inout_str(argMap, address);
 
+    
+    /** TODO: Fix this. 
     if(tokens.size() < 3) {
         throw std::invalid_argument("Link field does not have enough parameters. \'" + address + "\'");
     }
-    
+    **/
+
     /** First find the connection*/
-    auto conn = _getConnection(tokens.at(0));
+    auto conn = _getConnection(argMap["cid"]);
     if(!conn)
-        throw std::invalid_argument("Link field can't find device \'@" + tokens.at(0) + "\'");
+        throw std::invalid_argument("Link field can't find device \'@" + argMap["cid"] + "\'");
     
     /** Second find the FRU*/
-    std::string s = tokens.at(1).erase(0, 1);
-    const IpmiFruDevLocRec &frec = conn->get_fru_by_device_slave_address(std::stoi(s, nullptr, 10));
+    std::shared_ptr<IpmiFruDevLocRec> frec = conn->get_fru_by_device_slave_address(std::stoi(argMap["fru"], nullptr, 10));
 
-    s = tokens.at(2).erase(0, 1);
-    const IpmiSensorRecComp &recComp = frec.get_sensor_by_sensor_number(std::stoi(s, nullptr, 10));
+    std::shared_ptr<IpmiSensorRecComp> sp = frec->get_sensor_by_sensor_number(std::stoi(argMap["sn"], nullptr, 10));
 
 }
 
 bool scheduleGet(const std::string& address, const std::function<void()>& cb, Provider::Entity& entity)
 {
-    ///auto conn = _getConnection( _parseLink(address).first );
-    std::vector<std::string> tokens;
+    std::map<std::string, std::string> argMap;
 
     ///TODO: Add throw. Strict parsing on number of tokens.
-    parse_inout_str(tokens, address);
+    parse_inout_str(argMap, address);
     
     /** First find the connection*/
-    auto conn = _getConnection(tokens.at(0));
+    auto conn = _getConnection(argMap["cid"]);
     if(!conn)
         return (!!conn);
-    /**
-    auto addr = _parseLink(address);
-    auto conn = _getConnection(addr.first);
-    if (!conn)
-        return false;
-    */
 
    /** Second find the FRU*/
-    std::string s = tokens.at(1).erase(0, 1);
-    const IpmiFruDevLocRec &frec = conn->get_fru_by_device_slave_address(std::stoi(s, nullptr, 10));
+    std::string s;
+    std::shared_ptr<IpmiFruDevLocRec> frec = conn->get_fru_by_device_slave_address(std::stoi(argMap["fru"], nullptr, 10));
 
-    s = tokens.at(2).erase(0, 1);
-    const IpmiSensorRecComp &recComp = frec.get_sensor_by_sensor_number(std::stoi(s, nullptr, 10));
+    std::shared_ptr<IpmiSensorRecComp> sp = frec->get_sensor_by_sensor_number(std::stoi(argMap["sn"], nullptr, 10));
 
-    std::shared_ptr<IpmiSensorRecComp> sp = frec.get_sensor_by_sensor_number2(std::stoi(s, nullptr, 10));
-
-    ///return conn->schedule( Provider::Task(recComp, std::move(addr.second), cb, entity) );
-    ///return conn->schedule( Provider::Task(recComp, s, cb, entity) );
     return conn->schedule( Provider::Task(sp, s, cb, entity) );
 }
 

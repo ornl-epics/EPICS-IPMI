@@ -128,18 +128,7 @@ uint8_t IpmiFruDevLocRec::get_device_slave_address() {
     return this->logical_fru_device_device_slave_address;
 }
 
-const IpmiSensorRecComp &IpmiFruDevLocRec::get_sensor_by_sensor_number(uint8_t number) const {
-    for(auto &sens : this->sensor_records) {
-        if(sens->get_sensor_number() == number) {
-            return *sens.get();
-        }
-    }
-    std::stringstream ss;
-    ss << "Sensor number \'" << (unsigned) number << "\' not found!\n";
-    throw std::invalid_argument(ss.str());
-}
-
-std::shared_ptr<IpmiSensorRecComp> IpmiFruDevLocRec::get_sensor_by_sensor_number2(uint8_t number) const {
+std::shared_ptr<IpmiSensorRecComp> IpmiFruDevLocRec::get_sensor_by_sensor_number(uint8_t number) const {
     for(auto &sens : this->sensor_records) {
         if(sens->get_sensor_number() == number) {
             return sens;
@@ -147,6 +136,17 @@ std::shared_ptr<IpmiSensorRecComp> IpmiFruDevLocRec::get_sensor_by_sensor_number
     }
     std::stringstream ss;
     ss << "Sensor number \'" << (unsigned) number << "\' not found!\n";
+    throw std::invalid_argument(ss.str());
+}
+
+std::shared_ptr<IpmiSensorRecComp> IpmiFruDevLocRec::get_sensor_by_sensor_id_string(const std::string &idStr) const {
+    for(auto &sens : this->sensor_records) {
+        if(sens->get_device_id_string() == idStr) {
+            return sens;
+        }
+    }
+    std::stringstream ss;
+    ss << "Sensor ID-Strind \'" << idStr << "\' not found!\n";
     throw std::invalid_argument(ss.str());
 }
 

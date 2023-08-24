@@ -72,6 +72,11 @@ static void parse_inout_str(std::map<std::string, std::string> &argMap, const st
     if(std::regex_match(link, re_m, re_sid)) {
         argMap["cid"] = re_m[1];
         argMap["fru"] = re_m[2];
+
+        /** The quotes were only used to keep whitespace characters that
+         *  are unknowingly at the end of the strings... Take them off
+         *  now and preserve those whitespace characters.
+        */
         for(auto &ch : re_m[3].str()) {
             if(ch != '\'')
                 argMap["sid"].push_back(ch);

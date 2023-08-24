@@ -14,7 +14,7 @@
 #include <stdexcept>
 #include <sstream>
 #include <iostream>
-#include <type_traits>
+#include <fstream>
 #include <freeipmi/freeipmi.h>
 #include "EpRecord.h"
 #include "IpmiSensorRecFull.h"
@@ -39,7 +39,16 @@ const char *password = NULL;
 ipmi_ctx_t ipmi{nullptr};
 
 const std::string sdr_cache_path = "/tmp/ipmi_sdr_xxx.cache";
+std::string report_file_name;
+std::ofstream reportfile;
+std::string epics_db_file_name;
+std::ofstream dbfile;
 ipmi_sdr_ctx_t sdr{nullptr};
+
+uint16_t record_count = 0;
+uint8_t SdrVersion = 0;
+uint32_t SdrAdditionTimestamp = 0;
+uint32_t SdrEraseTimestamp = 0;
 
 std::vector<uint16_t> mcdlr;
 std::vector<std::shared_ptr<IpmiFruDevLocRec>> fruDevLocRecList;
@@ -96,6 +105,18 @@ void ipmi_init() {
         throw std::invalid_argument(
             "Error: A password must be provided! Use the -p switch and provide a valid password.");
     
+    itr = cli_args_map.find("--create-report-file");
+    if(itr != cli_args_map.end()) {
+        report_file_name = itr->second.c_str();
+        reportfile.open(report_file_name);
+    }
+
+    itr = cli_args_map.find("--create-db-file");
+    if(itr != cli_args_map.end()) {
+        epics_db_file_name = itr->second.c_str();
+        dbfile.open(epics_db_file_name);
+    }
+
     ipmi = ipmi_ctx_create();
     if(ipmi == nullptr) {
         throw std::logic_error(
@@ -144,10 +165,20 @@ void ipmi_open_cache() {
 
 void ipmi_parse_sdr() {
 
-    uint16_t record_count;
-    int rv = ipmi_sdr_cache_record_count (sdr, &record_count);
-    
-    printf("**** Rec Count: %u\n", record_count);
+    if(ipmi_sdr_cache_sdr_version (sdr, &SdrVersion) < 0)
+        throw std::runtime_error("Error! Could not read SDR cache version.");
+
+    /* Get the SDR most recent addition timestamp */
+    if(ipmi_sdr_cache_most_recent_addition_timestamp (sdr, &SdrAdditionTimestamp) < 0)
+        throw std::runtime_error("Error! Could not read SDR cache most recent addition timestamp.");
+
+    /* Get the SDR most recent erase timestamp */
+    if(ipmi_sdr_cache_most_recent_erase_timestamp (sdr, &SdrEraseTimestamp) < 0)
+        throw std::runtime_error("Error! Could not read SDR cache most recent erase timestamp.");
+
+    /* Get the SDR record count */
+    if(ipmi_sdr_cache_record_count (sdr, &record_count) < 0)
+        throw std::runtime_error("Error! Could not read SDR cache record count.");
 
     const void *sdr_record = NULL;
     unsigned int sdr_record_len = 0;
@@ -155,7 +186,7 @@ void ipmi_parse_sdr() {
     uint8_t record_type = 0;
 
     for(int i = 0; i < record_count; i++, ipmi_sdr_cache_next(sdr)) {
-	    rv = ipmi_sdr_parse_record_id_and_type (sdr,
+	    int rv = ipmi_sdr_parse_record_id_and_type (sdr,
                             sdr_record,
                             sdr_record_len,
                             &record_id,
@@ -209,28 +240,55 @@ int main(int argc, char const *argv[]) {
         ipmi_open_cache();
         ipmi_parse_sdr();
         
+        if(reportfile.is_open()) {
+            reportfile << hostname << " SDR Info {" << std::endl;
+            reportfile << " * SDR Record Count: " << record_count << "," << std::endl;
+            reportfile << " * SDR Version: " << (unsigned) SdrVersion << "," << std::endl;
+            reportfile << " * SDR Addition Timestamp: " << (unsigned) SdrAdditionTimestamp << "," << std::endl;
+            reportfile << " * SDR Erase Timestamp: " << (unsigned) SdrEraseTimestamp << std::endl;
+            reportfile << "}" << std::endl;
+        }
+        else {
+            std::cout << hostname << " SDR Info {" << std::endl;
+            std::cout << " * SDR Record Count: " << record_count << "," << std::endl;
+            std::cout << " * SDR Version: " << (unsigned) SdrVersion << "," << std::endl;
+            std::cout << " * SDR Addition Timestamp: " << (unsigned) SdrAdditionTimestamp << "," << std::endl;
+            std::cout << " * SDR Erase Timestamp: " << (unsigned) SdrEraseTimestamp << std::endl;
+            std::cout << "}" << std::endl;
+        }
+            
         for(auto &fdlr: fruDevLocRecList) {
             fdlr->parse_sensors(sensRecFullList);
             fdlr->parse_sensors(sensRecCompactList);
-            std::cout << fdlr->report();
+            if(reportfile.is_open()) {
+                reportfile << fdlr->report();
+            }
+            else
+                std::cout << fdlr->report();
         }
 
-        for(auto &obj : fruDevLocRecList) {
-            std::vector<std::shared_ptr<EpRecord>> eprList;
-            
-            for(auto &sensor : obj->get_sensors()) {
-                std::shared_ptr<EpRecord> epr = EpRecord::create(obj->get_device_slave_address(), sensor);
-                eprList.push_back(epr);
-                std::cout << epr->to_string() << std::endl;
+        if(dbfile.is_open()) {
+            for(auto &obj : fruDevLocRecList) {
+                std::vector<std::shared_ptr<EpRecord>> eprList;
+                
+                for(auto &sensor : obj->get_sensors()) {
+                    std::shared_ptr<EpRecord> epr = EpRecord::create(obj->get_device_slave_address(), sensor);
+                    eprList.push_back(epr);
+                    dbfile << epr->to_string() << std::endl;
+                }
             }
-
         }
 
     }
     catch(const std::exception& e) {
         std::cerr << e.what() << '\n';
     }
-    
+    if(reportfile.is_open()) {
+        reportfile.close();
+    }
+    if(dbfile.is_open()){
+        dbfile.close();
+    }
 }
 
 

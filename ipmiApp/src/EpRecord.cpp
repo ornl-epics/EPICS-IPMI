@@ -55,9 +55,9 @@ std::string EpRecord::to_string() {
     return ss.str();
 }
 
-std::shared_ptr<EpRecord> EpRecord::create(const uint16_t fru_addr, const IpmiSensorRecComp &irecord) {
+std::shared_ptr<EpRecord> EpRecord::create(const uint16_t fru_addr, std::shared_ptr<IpmiSensorRecComp> irecord) {
     
-    std::string dev_id_str = irecord.get_device_id_string();
+    std::string dev_id_str = irecord->get_device_id_string();
     /** Replace all spaces (' ') with underscores ('_').*/
     std::replace(dev_id_str.begin(), dev_id_str.end(), ' ', '_');
 
@@ -68,12 +68,13 @@ std::shared_ptr<EpRecord> EpRecord::create(const uint16_t fru_addr, const IpmiSe
 
     std::string inout = "@<dev> F";
     inout += std::to_string(fru_addr);
-    inout += " S";
-    inout += std::to_string(irecord.get_sensor_number());
+    inout += " SID ";
+    ///inout += std::to_string(irecord.get_sensor_number());
+    inout += irecord->get_device_id_string();
 
     std::string egu = "";
-    if(irecord.get_sensor_base_unit_type_str() != "unspecified") {
-        egu += irecord.get_sensor_base_unit_type_str();
+    if(irecord->get_sensor_base_unit_type_str() != "unspecified") {
+        egu += irecord->get_sensor_base_unit_type_str();
     }
     
     return std::make_shared<EpRecord>(EpAiRecord(name, inout, "1 second", egu, "1"));

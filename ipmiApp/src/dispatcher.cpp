@@ -18,6 +18,7 @@
 #include <string>
 #include <iostream>
 #include <sstream>
+#include <regex>
 
 // EPICS records that we support
 #include <aiRecord.h>
@@ -40,7 +41,7 @@ static std::map<std::string, LinkOptions> s_mapLinkOptions = {
     {"SN", LinkOptions::SN}
     };
 
-/// @brief Split string on whitespaces and place tokens into map
+/// @brief Split string and place tokens into map
 /// @param argmap 
 /// @param link 
 static void parse_inout_str(std::map<std::string, std::string> &argMap, const std::string &link) {
@@ -51,54 +52,27 @@ static void parse_inout_str(std::map<std::string, std::string> &argMap, const st
      * <device> F<FRU number> SID <sensor-id-string>
     */
 
-    std::vector<std::string> tokens;
-    std::stringstream ss(link);
-    std::string tok;
-    
-    while(ss >> tok) {
-        tokens.push_back(tok);
+    std::regex re_sid ("([a-zA-Z0-9]+) F *([0-9]+) SID *(.*)");
+    std::regex re_sn ("([a-zA-Z0-9]+) F *([0-9]+) SN *([0-9]+)");
+    std::smatch re_m;
+
+    /* Do we have SID? */
+    if(std::regex_match(link, re_m, re_sid)) {
+        argMap["cid"] = re_m[1];
+        argMap["fru"] = re_m[2];
+        for(auto &ch : re_m[3].str()) {
+            if(ch != '\'')
+                argMap["sid"].push_back(ch);
+        }
     }
-
-    /* So, we must have at least 3 tokens to get this party started.*/
-    if(tokens.size() < 3) {
-        throw std::invalid_argument("Link field does not have enough parameters. \'" + link + "\'");
+    /* Or do we have SN? */
+    else if(std::regex_match(link, re_m, re_sn)) {
+        argMap["cid"] = re_m[1];
+        argMap["fru"] = re_m[2];
+        argMap["sn"] = re_m[3];
     }
-
-    /* Connection ID is first. */
-    argMap["cid"] = tokens.at(0);
-
-    /* FRU ID is next. */
-    argMap["fru"] = tokens.at(1).erase(0,1);
-
-    /* Last is the SENSOR identifier... for now... Later will add something for LEDS
-     * Currently there are two different options for identifying sensors:
-     * (1) We can identify them by sensor number. E.g., SN 33.
-     * (2) We can identify them by sensor id string. E.g., SID VT AMC523 12V
-     *  Option (2) can contain spaces. It is annoying but that is the way the vendors
-     *  do it.
-     */
-    switch (s_mapLinkOptions[tokens.at(2)]) {
-
-        /*(1)*/
-        case LinkOptions::SN:
-            argMap["sn"] = tokens.at(3);
-            break;
-
-        /*(2)*/
-        case LinkOptions::SID:
-            std::vector<std::string>::iterator itr = tokens.begin();
-            std::advance(itr, 3);
-            while(itr != tokens.end()) {
-                argMap["sid"] += *(itr++);
-                if(itr != tokens.end()) {
-                    argMap["sid"] += " ";
-                }
-            }
-            break;
-        
-        /* Neither options were found; let's throw! */
-        default:
-            throw std::invalid_argument("Link field does not contain options after FRU. \'" + link + "\'");
+    else {
+        throw std::invalid_argument("Link field does not contain proper arguments. \'" + link + "\'");
     }
 }
 

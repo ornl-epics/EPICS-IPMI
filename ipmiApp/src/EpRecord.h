@@ -51,7 +51,7 @@ public:
     ~EpRecord();
     int add_field(const std::vector<std::string> &valid_fields, const std::string field_name, const std::string field_value);
     std::string to_string();
-    static std::shared_ptr<EpRecord> create(const uint16_t fru_addr, const IpmiSensorRecComp &ipmi_record);
+    static std::shared_ptr<EpRecord> create(const uint16_t fru_addr, std::shared_ptr<IpmiSensorRecComp> ipmi_record);
 };
 
 #endif

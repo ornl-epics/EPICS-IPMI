@@ -90,7 +90,7 @@ FreeIpmiProvider::Entity FreeIpmiProvider::get_entity_value(std::shared_ptr<Ipmi
     /** First check to see if this sensor matches the SDR. The SDR can change underneith us.
      * See Section 33.5 "Reading the SDR Repository" of the IPMI Specification.
     */
-    counter += 1;
+    ///counter += 1;
     
     if(compareSdrRecordKeys(m_ctx.sdr, *sdrRec) != 0 || counter >= 30) {
         ///TODO: Dump the current IpmiSensorRecComp objects and reread the SDR

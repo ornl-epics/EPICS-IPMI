@@ -146,7 +146,7 @@ std::shared_ptr<IpmiSensorRecComp> IpmiFruDevLocRec::get_sensor_by_sensor_id_str
         }
     }
     std::stringstream ss;
-    ss << "Sensor ID-Strind \'" << idStr << "\' not found!\n";
+    ss << "Sensor ID-String \'" << idStr << "\' not found!\n";
     throw std::invalid_argument(ss.str());
 }
 

@@ -219,7 +219,7 @@ int main(int argc, char const *argv[]) {
             std::vector<std::shared_ptr<EpRecord>> eprList;
             
             for(auto &sensor : obj->get_sensors()) {
-                std::shared_ptr<EpRecord> epr = EpRecord::create(obj->get_device_slave_address(), *sensor);
+                std::shared_ptr<EpRecord> epr = EpRecord::create(obj->get_device_slave_address(), sensor);
                 eprList.push_back(epr);
                 std::cout << epr->to_string() << std::endl;
             }

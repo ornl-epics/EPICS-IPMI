@@ -48,13 +48,25 @@ static void parse_inout_str(std::map<std::string, std::string> &argMap, const st
 
     /** 
      * We are looking for inout string signatures like the following:
-     * <device> F<FRU number> SN <sensor-number>
-     * <device> F<FRU number> SID <sensor-id-string>
+     * <device-name> F<FRU number> SN <sensor-number>
+     * <device-name> F<FRU number> SID <sensor-id-string>
+     * Note: id-strings can contain spaces. This is slightly annoying,
+     * because on a VadaTech device, while reading the SDR, one device
+     * id-string come back with a space at the end of the string. EPICS
+     * trims this off the inout string automatically. So to make it work
+     * you will have to wrap your string with single quotes if they have
+     * spaces at the end.
+     * E.g., "@vt811 F5 SID 'VT BIOS POST '"
     */
 
     std::regex re_sid ("([a-zA-Z0-9]+) F *([0-9]+) SID *(.*)");
     std::regex re_sn ("([a-zA-Z0-9]+) F *([0-9]+) SN *([0-9]+)");
     std::smatch re_m;
+
+    /**
+     * Determine which flavor of inout patterns we are using:
+     * SID (Sensor Id String) Or SN (Sensor Number)
+    */
 
     /* Do we have SID? */
     if(std::regex_match(link, re_m, re_sid)) {
@@ -71,7 +83,7 @@ static void parse_inout_str(std::map<std::string, std::string> &argMap, const st
         argMap["fru"] = re_m[2];
         argMap["sn"] = re_m[3];
     }
-    else {
+    else {  /* Something is wrong. Throw now! */
         throw std::invalid_argument("Link field does not contain proper arguments. \'" + link + "\'");
     }
 }

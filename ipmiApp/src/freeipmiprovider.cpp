@@ -91,7 +91,7 @@ FreeIpmiProvider::Entity FreeIpmiProvider::get_entity_value(std::shared_ptr<Ipmi
      * See Section 33.5 "Reading the SDR Repository" of the IPMI Specification.
     */
     ///counter += 1;
-    
+    /*
     if(compareSdrRecordKeys(m_ctx.sdr, *sdrRec) != 0 || counter >= 30) {
         ///TODO: Dump the current IpmiSensorRecComp objects and reread the SDR
         std::stringstream ss;
@@ -106,7 +106,7 @@ FreeIpmiProvider::Entity FreeIpmiProvider::get_entity_value(std::shared_ptr<Ipmi
             ss << "SDR key for FRU: \'FRU-Id is Unavailable\' and Sensor-ID: \'";
         ss << sdrRec.get()->get_device_id_string() << "\' does not match key in repository." << std::endl;
         throw std::runtime_error(ss.str());
-    }
+    }*/
     Entity entity = read_sensor(m_ctx.sdr, m_ctx.sensors, *sdrRec);
     return entity;
 }
@@ -257,44 +257,15 @@ void FreeIpmiProvider::readSdrCache() {
             throw std::runtime_error("Could not read record ID and record type in SDR.");
         
         /* Add this record type to the list. When constructor is called we read more sensor data */
-        if(record_type == IPMI_SDR_FORMAT_FULL_SENSOR_RECORD) {
-            this->sensRecFullList.push_back(std::make_shared<IpmiSensorRecFull>(m_ctx.sdr, record_id, record_type));
-        }
-        
-        /* Add this record type to the list. Compact and Full are so close to the same.
-         * When constructor is called we read more sensor data
-         */
-        if(record_type == IPMI_SDR_FORMAT_COMPACT_SENSOR_RECORD) {
-            this->sensRecCompactList.push_back(std::make_shared<IpmiSensorRecComp>(m_ctx.sdr, record_id, record_type));
-        }
-
-        if(record_type == IPMI_SDR_FORMAT_EVENT_ONLY_RECORD) {
-            ///TODO:
-            ;
-        }
-
-        if(record_type == IPMI_SDR_FORMAT_DEVICE_RELATIVE_ENTITY_ASSOCIATION_RECORD) {
-            ///TODO:
-            ;
-        }
-        
-        /* Add this record type to the list. This record type is useful for grouping sensor based on
-         * FRU to sensor relationships. 
-         */
-        if(record_type == IPMI_SDR_FORMAT_FRU_DEVICE_LOCATOR_RECORD) {
-            this->fruDevLocRecList.push_back(std::make_shared<IpmiFruDevLocRec>(m_ctx.sdr, record_id, record_type));
-        }
-
-        if(record_type == IPMI_SDR_FORMAT_MANAGEMENT_CONTROLLER_DEVICE_LOCATOR_RECORD) {
-            ///TODO:
-            ;
-        }
+        insertRecord(m_ctx.sdr, record_id, record_type);
     }
 
-    /* Iterate through all of the FRU Device Locator Records and attach sensors to their paren FRUs */
+    std::copy(sensRecFullList.begin(), sensRecFullList.end(), std::back_inserter(orphandList));
+    std::copy(sensRecCompactList.begin(), sensRecCompactList.end(), std::back_inserter(orphandList));
+
+    /* Iterate through all of the FRU Device Locator Records and attach sensors to their parent FRUs */
     for(auto &fdlr: this->fruDevLocRecList) {
-        fdlr.get()->parse_sensors(this->sensRecFullList);
-        fdlr.get()->parse_sensors(this->sensRecCompactList);
+        fdlr.get()->parseAssociations(orphandList);
     }
 
     /* Create a reverse lookup map so the sensor can find its parent FRU. */
@@ -304,6 +275,96 @@ void FreeIpmiProvider::readSdrCache() {
             this->m_SensToFruMap.insert({sensr, fdlr.get()->get_device_slave_address()});
         }
     }
+
+}
+
+void FreeIpmiProvider::insertRecord(ipmi_sdr_ctx_t sdr, uint16_t record_id, uint8_t record_type) {
+
+    if(record_type == IPMI_SDR_FORMAT_FULL_SENSOR_RECORD) {
+        std::shared_ptr<IpmiSensorRecFull> p;
+
+        /** Add sensor to list */
+        p = std::make_shared<IpmiSensorRecFull>(m_ctx.sdr, record_id, record_type);
+        this->sensRecFullList.push_back(p);
+
+        /** Add sensor to map with entity-id:entity-instance:sensor-number as key */
+        insertIntoEntityMap(p);
+    }
+
+    /* Add this record type to the list. Compact and Full are so close to the same.
+    * When constructor is called we read more sensor data
+    */
+    if(record_type == IPMI_SDR_FORMAT_COMPACT_SENSOR_RECORD) {
+        std::shared_ptr<IpmiSensorRecComp> p;
+
+        /** Add sensor to list */
+        p = std::make_shared<IpmiSensorRecComp>(m_ctx.sdr, record_id, record_type);
+        this->sensRecCompactList.push_back(p);
+
+        /** Add sensor to map with entity-id:entity-instance:sensor-number as key */
+        insertIntoEntityMap(p);
+    }
+
+    if(record_type == IPMI_SDR_FORMAT_EVENT_ONLY_RECORD) {
+        ///TODO:
+        ;
+    }
+
+    if(record_type == IPMI_SDR_FORMAT_DEVICE_RELATIVE_ENTITY_ASSOCIATION_RECORD) {
+        ///TODO:
+        ;
+    }
+
+    /* Add this record type to the list. This record type is useful for grouping sensor based on
+        * FRU to sensor relationships. 
+        */
+    if(record_type == IPMI_SDR_FORMAT_FRU_DEVICE_LOCATOR_RECORD) {
+        this->fruDevLocRecList.push_back(std::make_shared<IpmiFruDevLocRec>(m_ctx.sdr, record_id, record_type));
+    }
+
+    if(record_type == IPMI_SDR_FORMAT_MANAGEMENT_CONTROLLER_DEVICE_LOCATOR_RECORD) {
+        ///TODO:
+        ;
+    }
+}
+
+void FreeIpmiProvider::insertIntoEntityMap(std::shared_ptr<IpmiSensorRecComp> p) {
+    
+    /** Add sensor to map with entity-id:entity-instance:sensor-number as key */
+    std::pair<std::map<std::string, std::shared_ptr<IpmiSensorRecComp>>::iterator,bool> rv;
+
+    /** Create the key */
+    std::string snKey = std::to_string(p->get_entity_id()) + ":" + 
+    std::to_string(p->get_entity_instance()) + ":" + std::to_string(p->get_sensor_number());
+
+    rv = this->m_SnEntityMap.insert({snKey, p});
+    if(rv.second == false) {
+        throw std::runtime_error("ERROR! Could not insert record into map. Duplicate Keys Exists: " + snKey);
+    }
+
+    /** Create the key */
+    std::string sidKey = std::to_string(p->get_entity_id()) + ":" + 
+    std::to_string(p->get_entity_instance()) + ":" + p->get_device_id_string();
+
+    rv = this->m_SidEntityMap.insert({sidKey, p});
+    if(rv.second == false) {
+        throw std::runtime_error("ERROR! Could not insert record into map. Duplicate Keys Exists: " + sidKey);
+    }
+}
+
+std::shared_ptr<IpmiSensorRecComp> FreeIpmiProvider::findSensorByMapKey(std::string key) {
+
+    std::map<std::string, std::shared_ptr<IpmiSensorRecComp>>::iterator itr;
+
+    itr = this->m_SidEntityMap.find(key);
+    if(itr != this->m_SidEntityMap.end()) {
+        return itr->second;
+    }
+    itr = this->m_SnEntityMap.find(key);
+    if(itr != this->m_SnEntityMap.end()) {
+        return itr->second;
+    }
+    throw std::runtime_error("ERROR! Could not find record based on map key: " + key);
 
 }
 

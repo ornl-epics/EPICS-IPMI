@@ -59,11 +59,23 @@ static void parse_inout_str(std::map<std::string, std::string> &argMap, const st
      * E.g., "@vt811 F5 SID 'VT BIOS POST '"
     */
 
-    std::regex re_sid ("([a-zA-Z0-9]+) F *([0-9]+) SID *(.*)");
-    std::regex re_sn ("([a-zA-Z0-9]+) F *([0-9]+) SN *([0-9]+)");
+    ///std::regex re_sid ("([a-zA-Z0-9]+) F *([0-9]+) SID *(.*)");
+
+    /* This one is used for @dev1 EID 10:98 SID VT AMC726 Tpch */
+    std::regex re_sid ("([a-zA-Z0-9]+) EID *([0-9]+) *: *([0-9]+) *SID *(.*)");
+
+    ///std::regex re_sn ("([a-zA-Z0-9]+) F *([0-9]+) SN *([0-9]+)");
+
+    /* This one is used for @dev1 EID 10:98 SN 39 */
+    std::regex re_sn ("([a-zA-Z0-9]+) EID *([0-9]+) *: *([0-9]+) *SN *([0-9]+)");
     std::smatch re_m;
 
     /**
+     * cid = connection ID
+     * et = entity type
+     * ei = entity instance
+     * sid = sensor id-string
+     * sn = sensor number
      * Determine which flavor of inout patterns we are using:
      * SID (Sensor Id String) Or SN (Sensor Number)
     */
@@ -71,13 +83,14 @@ static void parse_inout_str(std::map<std::string, std::string> &argMap, const st
     /* Do we have SID? */
     if(std::regex_match(link, re_m, re_sid)) {
         argMap["cid"] = re_m[1];
-        argMap["fru"] = re_m[2];
+        argMap["et"] = re_m[2];
+        argMap["ei"] = re_m[3];
 
         /** The quotes were only used to keep whitespace characters that
          *  are unknowingly at the end of the strings... Take them off
          *  now and preserve those whitespace characters.
         */
-        for(auto &ch : re_m[3].str()) {
+        for(auto &ch : re_m[4].str()) {
             if(ch != '\'')
                 argMap["sid"].push_back(ch);
         }
@@ -85,8 +98,9 @@ static void parse_inout_str(std::map<std::string, std::string> &argMap, const st
     /* Or do we have SN? */
     else if(std::regex_match(link, re_m, re_sn)) {
         argMap["cid"] = re_m[1];
-        argMap["fru"] = re_m[2];
-        argMap["sn"] = re_m[3];
+        argMap["et"] = re_m[2];
+        argMap["ei"] = re_m[3];
+        argMap["sn"] = re_m[4];
     }
     else {  /* Something is wrong. Throw now! */
         throw std::invalid_argument("Link field does not contain proper arguments. \'" + link + "\'");
@@ -245,16 +259,21 @@ void checkLink(const std::string& address) {
     auto conn = _getConnection(argMap["cid"]);
     if(!conn)
         throw std::invalid_argument("Link field can't find device \'@" + argMap["cid"] + "\'");
-    
-    /** Second find the FRU*/
-    std::shared_ptr<IpmiFruDevLocRec> frec = conn->get_fru_by_device_slave_address(std::stoi(argMap["fru"], nullptr, 10));
+
+    std::string key = argMap["et"] + ":" + argMap["ei"] + ":";
 
     /** Are we identifying this record by sensor number or id string?*/
     if(argMap.find("sn") != argMap.end()) {
-        std::shared_ptr<IpmiSensorRecComp> sp = frec->get_sensor_by_sensor_number(std::stoi(argMap["sn"], nullptr, 10));
+        //std::shared_ptr<IpmiSensorRecComp> sp = frec->get_sensor_by_sensor_number(std::stoi(argMap["sn"], nullptr, 10));
+        key += argMap["sn"];
+        std::shared_ptr<IpmiSensorRecComp> sp = conn->findSensorByMapKey(key);
+        ///std::cout << "1Object found: " << sp->get_device_id_string() << std::endl;
     }
     else if(argMap.find("sid") != argMap.end()) {
-        std::shared_ptr<IpmiSensorRecComp> sp = frec->get_sensor_by_sensor_id_string(argMap["sid"]);
+        ///std::shared_ptr<IpmiSensorRecComp> sp = frec->get_sensor_by_sensor_id_string(argMap["sid"]);
+        key += argMap["sid"];
+        std::shared_ptr<IpmiSensorRecComp> sp = conn->findSensorByMapKey(key);
+        ///std::cout << "2Object found: " << sp->get_device_id_string() << std::endl;
     }
     else    /* We should have already thrown at this point*/
         throw std::runtime_error("Sensor parameter invalid in link field....");
@@ -276,19 +295,26 @@ bool scheduleGet(const std::string& address, const std::function<void()>& cb, Pr
 
    /** Second find the FRU*/
     std::string s;
-    std::shared_ptr<IpmiFruDevLocRec> frec = conn->get_fru_by_device_slave_address(std::stoi(argMap["fru"], nullptr, 10));
     std::shared_ptr<IpmiSensorRecComp> sp;
+
+    std::string key = argMap["et"] + ":" + argMap["ei"] + ":";
 
     /** Are we identifying this record by sensor number or id string?*/
     if(argMap.find("sn") != argMap.end()) {
-        sp = frec->get_sensor_by_sensor_number(std::stoi(argMap["sn"], nullptr, 10));
+        //std::shared_ptr<IpmiSensorRecComp> sp = frec->get_sensor_by_sensor_number(std::stoi(argMap["sn"], nullptr, 10));
+        key += argMap["sn"];
+        sp = conn->findSensorByMapKey(key);
+        ///std::cout << "1Object found: " << sp->get_device_id_string() << std::endl;
     }
     else if(argMap.find("sid") != argMap.end()) {
-        sp = frec->get_sensor_by_sensor_id_string(argMap["sid"]);
+        ///std::shared_ptr<IpmiSensorRecComp> sp = frec->get_sensor_by_sensor_id_string(argMap["sid"]);
+        key += argMap["sid"];
+        sp = conn->findSensorByMapKey(key);
+        ///std::cout << "2Object found: " << sp->get_device_id_string() << std::endl;
     }
     else    /* We should have already thrown at this point*/
         throw std::runtime_error("Sensor parameter invalid in link field....");
-
+    
     return conn->schedule( Provider::Task(sp, s, cb, entity) );
 }
 

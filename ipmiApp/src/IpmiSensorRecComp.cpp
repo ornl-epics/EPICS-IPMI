@@ -6,6 +6,9 @@
 */
 
 #include "IpmiSensorRecComp.h"
+#include <sstream>
+#include "IpmiSdrDefs.h"
+
 
 IpmiSensorRecComp::IpmiSensorRecComp(ipmi_sdr_ctx_t sdr, uint16_t record_id, uint8_t record_type)
     :IpmiSdrRec(record_id, record_type)
@@ -92,3 +95,53 @@ std::string IpmiSensorRecComp::get_sensor_base_unit_type_str() const {
 const common::buffer<uint8_t, IPMI_SDR_MAX_RECORD_LENGTH> &IpmiSensorRecComp::get_record_data() const {
     return this->record_data;
 }
+
+std::string IpmiSensorRecComp::to_string() const {
+
+    std::stringstream ss;
+    
+    ss << " * ID-String: \'" << this->get_device_id_string() << "\'" <<
+        ", \n * Record-Id: " << this->get_record_id() <<
+        ", \n * Sensor-Owner-Id-Type: \'" <<
+        sdr_sensor_owner_id_type_itos_map[this->get_sensor_owner_id_type()] <<
+        "\' (" << (unsigned int) this->get_sensor_owner_id_type() << ")" <<
+        ", \n * Sensor-Owner-Id: " << (unsigned int) this->get_sensor_owner_id() <<
+        ", \n * Sensor-Owner-LUN: " << (unsigned int) this->get_sensor_owner_lun() <<
+        ", \n * Channel Number: " << (unsigned int) this->get_channel_number() <<
+        ", \n * Sensor Number: " << (unsigned int) this->get_sensor_number() <<
+        ", \n * Entity-Id: ";
+        if(IPMI_ENTITY_ID_VALID(this->get_entity_id())) {
+            ss << "\'" << ipmi_entity_ids_pretty[this->get_entity_id()] << "\'" <<
+                " (" << (unsigned int) this->get_entity_id() << ")";
+        }
+        else if(IPMI_ENTITY_ID_IS_CHASSIS_SPECIFIC(this->get_entity_id())) {
+            ss << "\'" << ipmi_entity_id_chassis_specific << "\'" <<
+                " (" << (unsigned int) this->get_entity_id() << ")";
+        }
+        else if(IPMI_ENTITY_ID_IS_BOARD_SET_SPECIFIC(this->get_entity_id())) {
+            ss << "\'" << ipmi_entity_id_board_set_specific << "\'" <<
+                " (" << (unsigned int) this->get_entity_id() << ")";
+        }
+        else if(IPMI_ENTITY_ID_IS_OEM_SYSTEM_INTEGRATOR_DEFINED(this->get_entity_id())) {
+            ss << "\'" << ipmi_entity_id_oem_system_integrator << "\'" <<
+                " (" << (unsigned int) this->get_entity_id() << ")";
+        }
+        else {
+            ss << "\'Unknow\' (" << (unsigned int) this->get_entity_id() << ")";
+        }
+        ss << ", \n * Entity Instance: " << (unsigned int) this->get_entity_instance() <<
+        ", \n * Sensor Type: ";
+        if(IPMI_SENSOR_TYPE_VALID(this->get_sensor_type())) {
+            ss << "\'" << ipmi_sensor_types[this->get_sensor_type()] << "\' (" <<
+                (unsigned int) this->get_sensor_type() << ")\n";
+        }
+        else
+            ss << "\'OEM\' (" << (unsigned int) this->get_sensor_type() << ")\n";
+        ss << " * Event/Reading Type Code: \'" << get_sensor_event_reading_type_code(
+                (unsigned int) this->get_event_reading_type_code()) <<
+            "\' (" << (unsigned int) this->get_event_reading_type_code() << ")\n";
+        ss << '\n';
+
+    return ss.str();
+}
+

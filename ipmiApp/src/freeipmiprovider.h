@@ -35,6 +35,10 @@ class FreeIpmiProvider : public Provider
         std::vector<std::shared_ptr<IpmiSensorRecFull>> sensRecFullList;
         std::vector<std::shared_ptr<IpmiSensorRecComp>> sensRecCompactList;
         std::vector<std::shared_ptr<IpmiFruDevLocRec>> fruDevLocRecList;
+        std::vector<std::shared_ptr<IpmiSensorRecComp>> orphandList;
+
+        std::map<std::string, std::shared_ptr<IpmiSensorRecComp>> m_SidEntityMap;
+        std::map<std::string, std::shared_ptr<IpmiSensorRecComp>> m_SnEntityMap;
 
         std::map<std::shared_ptr<IpmiSensorRecComp>, uint16_t> m_SensToFruMap;
 
@@ -142,6 +146,7 @@ class FreeIpmiProvider : public Provider
          */
         ~FreeIpmiProvider();
 
+        std::shared_ptr<IpmiSensorRecComp> findSensorByMapKey(std::string key);
         ///const IpmiFruDevLocRec &get_fru_by_device_slave_address(const uint8_t slave_address);
         std::shared_ptr<IpmiFruDevLocRec> get_fru_by_device_slave_address(const uint8_t slave_address);
         ///Entity get_entity_value(const IpmiSensorRecComp &sdrRec) override;
@@ -175,6 +180,8 @@ class FreeIpmiProvider : public Provider
         void initSdrContext();
         void initSensorsContext();
         void initFruContext();
+        void insertRecord(ipmi_sdr_ctx_t sdr, uint16_t record_id, uint8_t record_type);
+        void insertIntoEntityMap(std::shared_ptr<IpmiSensorRecComp> p);
 
         /**
          * @brief Tries to (re)connect to IPMI device

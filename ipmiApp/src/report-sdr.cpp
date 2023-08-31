@@ -24,8 +24,9 @@
 std::map<std::string,std::string> cli_args_map;
 std::map<std::string, std::string>::const_iterator itr;
 
-uint8_t authType = IPMI_AUTHENTICATION_TYPE_NONE;
+uint8_t authType = IPMI_AUTHENTICATION_TYPE_MD5;
 uint8_t privLevel = IPMI_PRIVILEGE_LEVEL_ADMIN;
+
 
 int sessionTimeout = IPMI_SESSION_TIMEOUT_DEFAULT;
 int retransmissionTimeout = IPMI_RETRANSMISSION_TIMEOUT_DEFAULT;
@@ -55,6 +56,7 @@ std::vector<std::shared_ptr<IpmiFruDevLocRec>> fruDevLocRecList;
 std::vector<uint16_t> evntr;
 std::vector<std::shared_ptr<IpmiSensorRecFull>> sensRecFullList;
 std::vector<std::shared_ptr<IpmiSensorRecComp>> sensRecCompactList;
+std::vector<std::shared_ptr<IpmiSensorRecComp>> orphandList;
 
 void parse_args(int argc, char const *argv[], std::map<std::string,std::string> &m) {
 
@@ -131,12 +133,25 @@ void ipmi_init() {
 }
 
 void ipmi_connect() {
+    
     int rv = ipmi_ctx_open_outofband(
         ipmi, hostname, username, password,
         authType, privLevel,
         sessionTimeout, retransmissionTimeout, workaroundFlags, flags);
     
     if(rv < 0) {
+
+        /* Get the error number from the context. */
+        rv = ipmi_ctx_errnum (ipmi);
+
+        /* Match the error number up with an error string. */
+        char *str_error = ipmi_ctx_strerror (rv);
+        std::cout << str_error << std::endl;
+
+        /* Get the error message associated with the context. This has been the same as the strerror */
+        str_error = ipmi_ctx_errormsg (ipmi);
+        std::cout << str_error << std::endl;
+
         throw std::logic_error(
             "Error: Could not create an ipmi connection using \'ipmi_ctx_open_outofband())\'.");
     }
@@ -224,8 +239,6 @@ void ipmi_parse_sdr() {
         }
 
     }
-    ///printf("mcdlr: %i, fruDevLocRecList: %i, evntr: %i, SensRecFullList: %i, SensRecCompactList: %i\n", mcdlr.size(), fruDevLocRecList.size(), evntr.size(), sensRecFullList.size(), sensRecCompactList.size());
-
 }
 
 int main(int argc, char const *argv[]) {
@@ -240,6 +253,7 @@ int main(int argc, char const *argv[]) {
         ipmi_open_cache();
         ipmi_parse_sdr();
         
+        /* Print the Header information */
         if(reportfile.is_open()) {
             reportfile << hostname << " SDR Info {" << std::endl;
             reportfile << " * SDR Record Count: " << record_count << "," << std::endl;
@@ -256,10 +270,14 @@ int main(int argc, char const *argv[]) {
             std::cout << " * SDR Erase Timestamp: " << (unsigned) SdrEraseTimestamp << std::endl;
             std::cout << "}" << std::endl;
         }
-            
+
+        std::copy(sensRecFullList.begin(), sensRecFullList.end(), std::back_inserter(orphandList));
+        std::copy(sensRecCompactList.begin(), sensRecCompactList.end(), std::back_inserter(orphandList));
+
+        /* Look for FRU associations */
         for(auto &fdlr: fruDevLocRecList) {
-            fdlr->parse_sensors(sensRecFullList);
-            fdlr->parse_sensors(sensRecCompactList);
+
+            fdlr->parseAssociations(orphandList);
             if(reportfile.is_open()) {
                 reportfile << fdlr->report();
             }
@@ -267,15 +285,29 @@ int main(int argc, char const *argv[]) {
                 std::cout << fdlr->report();
         }
 
+        std::cout << "Full: " << sensRecFullList.size() << ", Compact: " << 
+        sensRecCompactList.size() << ", orphandList: " << orphandList.size() << std::endl;
+
+        /* Print the sensors that are not associated with FRUs */
+        for(auto &rec : orphandList) {
+            std::cout << rec->to_string();
+        }
+
         if(dbfile.is_open()) {
+            std::vector<std::shared_ptr<EpRecord>> eprList;
             for(auto &obj : fruDevLocRecList) {
-                std::vector<std::shared_ptr<EpRecord>> eprList;
                 
                 for(auto &sensor : obj->get_sensors()) {
                     std::shared_ptr<EpRecord> epr = EpRecord::create(obj->get_device_slave_address(), sensor);
                     eprList.push_back(epr);
                     dbfile << epr->to_string() << std::endl;
                 }
+            }
+            
+            for(auto &sensor : orphandList) {
+                std::shared_ptr<EpRecord> epr = EpRecord::create(-1, sensor);
+                eprList.push_back(epr);
+                dbfile << epr->to_string() << std::endl;
             }
         }
 

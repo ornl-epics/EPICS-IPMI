@@ -56,50 +56,10 @@ std::string IpmiFruDevLocRec::report() {
 
     if(this->sensor_records.size() > 0) {
         ss << "Sensors attched (" << (unsigned int) this->sensor_records.size() << ")\n";
-        int count  = 1;
+        int count = 1;
         for(auto &rec : this->sensor_records) {
-            ss << "[" << count << "]\n" <<
-                " * ID-String: \'" << rec->get_device_id_string() << "\'" <<
-                ", \n * Record-Id: " << rec->get_record_id() <<
-                ", \n * Sensor-Owner-Id-Type: \'" <<
-                sdr_sensor_owner_id_type_itos_map[rec->get_sensor_owner_id_type()] <<
-                "\' (" << (unsigned int) rec->get_sensor_owner_id_type() << ")" <<
-                ", \n * Sensor-Owner-Id: " << (unsigned int) rec->get_sensor_owner_id() <<
-                ", \n * Sensor-Owner-LUN: " << (unsigned int) rec->get_sensor_owner_lun() <<
-                ", \n * Channel Number: " << (unsigned int) rec->get_channel_number() <<
-                ", \n * Sensor Number: " << (unsigned int) rec->get_sensor_number() <<
-                ", \n * Entity-Id: ";
-                if(IPMI_ENTITY_ID_VALID(rec->get_entity_id())) {
-                    ss << "\'" << ipmi_entity_ids_pretty[rec->get_entity_id()] << "\'" <<
-                        " (" << (unsigned int) rec->get_entity_id() << ")";
-                }
-                else if(IPMI_ENTITY_ID_IS_CHASSIS_SPECIFIC(rec->get_entity_id())) {
-                    ss << "\'" << ipmi_entity_id_chassis_specific << "\'" <<
-                        " (" << (unsigned int) rec->get_entity_id() << ")";
-                }
-                else if(IPMI_ENTITY_ID_IS_BOARD_SET_SPECIFIC(rec->get_entity_id())) {
-                    ss << "\'" << ipmi_entity_id_board_set_specific << "\'" <<
-                        " (" << (unsigned int) rec->get_entity_id() << ")";
-                }
-                else if(IPMI_ENTITY_ID_IS_OEM_SYSTEM_INTEGRATOR_DEFINED(rec->get_entity_id())) {
-                    ss << "\'" << ipmi_entity_id_oem_system_integrator << "\'" <<
-                        " (" << (unsigned int) rec->get_entity_id() << ")";
-                }
-                else {
-                    ss << "\'Unknow\' (" << (unsigned int) rec->get_entity_id() << ")";
-                }
-                ss << ", \n * Entity Instance: " << (unsigned int) rec->get_entity_instance() <<
-                ", \n * Sensor Type: ";
-                if(IPMI_SENSOR_TYPE_VALID(rec->get_sensor_type())) {
-                    ss << "\'" << ipmi_sensor_types[rec->get_sensor_type()] << "\' (" <<
-                        (unsigned int) rec->get_sensor_type() << ")\n";
-                }
-                else
-                    ss << "\'OEM\' (" << (unsigned int) rec->get_sensor_type() << ")\n";
-                ss << " * Event/Reading Type Code: \'" << get_sensor_event_reading_type_code(
-                        (unsigned int) rec->get_event_reading_type_code()) <<
-                    "\' (" << (unsigned int) rec->get_event_reading_type_code() << ")\n";
-                ss << '\n';
+            ss << "[" << count << "]\n";
+            ss << rec->to_string();
             count++;
         }
     }
@@ -107,22 +67,30 @@ std::string IpmiFruDevLocRec::report() {
 }
 
 template<typename T>
-void IpmiFruDevLocRec::parse_sensors(std::vector<std::shared_ptr<T>> &sensor_list) {
-    for(auto &rec: sensor_list) {
-        if(rec->get_entity_id() == this->fru_entity_id) {
-            if(rec->get_entity_instance() == this->fru_entity_instance)
-                this->sensor_records.push_back(rec);
+void IpmiFruDevLocRec::parseAssociations(std::vector<std::shared_ptr<T>> &sensor_list) {
+
+    auto itr = sensor_list.begin();
+    while(itr != sensor_list.end()) {
+        auto pos = *itr;
+        if(itr->get()->get_entity_id() == this->fru_entity_id && itr->get()->get_entity_instance() == this->fru_entity_instance) {
+            this->sensor_records.push_back(*itr);
+            itr = sensor_list.erase(itr);
         }
         /** TODO: Make a note about how fans and cooling unit are missing from the device relative association record.*/
-        else if(this->fru_entity_id == IPMI_ENTITY_ID_COOLING_UNIT_COOLING_DOMAIN && rec->get_sensor_type() == IPMI_SENSOR_TYPE_FAN) {
-            if(rec->get_entity_instance() == this->fru_entity_instance)
-                this->sensor_records.push_back(rec);
+        else if(this->fru_entity_id == IPMI_ENTITY_ID_COOLING_UNIT_COOLING_DOMAIN && itr->get()->get_sensor_type() == IPMI_SENSOR_TYPE_FAN) {
+            if(itr->get()->get_entity_instance() == this->fru_entity_instance)
+                this->sensor_records.push_back(*itr);
+                itr = sensor_list.erase(itr);
         }
+        if(*itr == pos) {
+            itr++;
+        }
+
     }
 }
 
-template void IpmiFruDevLocRec::parse_sensors(std::vector<std::shared_ptr<IpmiSensorRecComp>> &sensor_list);
-template void IpmiFruDevLocRec::parse_sensors(std::vector<std::shared_ptr<IpmiSensorRecFull>> &sensor_list);
+template void IpmiFruDevLocRec::parseAssociations(std::vector<std::shared_ptr<IpmiSensorRecComp>> &sensor_list);
+template void IpmiFruDevLocRec::parseAssociations(std::vector<std::shared_ptr<IpmiSensorRecFull>> &sensor_list);
 
 uint8_t IpmiFruDevLocRec::get_device_slave_address() {
     return this->logical_fru_device_device_slave_address;

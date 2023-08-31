@@ -55,19 +55,31 @@ std::string EpRecord::to_string() {
     return ss.str();
 }
 
-std::shared_ptr<EpRecord> EpRecord::create(const uint16_t fru_addr, std::shared_ptr<IpmiSensorRecComp> irecord) {
+std::shared_ptr<EpRecord> EpRecord::create(const int fru_addr, std::shared_ptr<IpmiSensorRecComp> irecord) {
     
     std::string dev_id_str = irecord->get_device_id_string();
-    /** Replace all spaces (' ') with underscores ('_').*/
-    std::replace(dev_id_str.begin(), dev_id_str.end(), ' ', '_');
 
-    std::string name = "$(P):FRU";
-    name += std::to_string(fru_addr);
-    name += "_";
+    /** Replace all spaces (' '), ('.'), and ('-') with underscores ('_').
+     * For some reason IPMI devices like to use those characters in their
+     * ID-string names.
+    */
+    std::replace_if(dev_id_str.begin(), dev_id_str.end(), [](char ch) {
+        return (ch == '.' || ch == ' ' || ch == '-') ? true : false;
+    }, '_');
+
+    std::string name = "$(P):";
+    if(fru_addr >= 0) {
+        name += "FRU";
+        name += std::to_string(fru_addr);
+        name += "_";
+    }
+
     name += dev_id_str;
 
-    std::string inout = "@<dev> F";
-    inout += std::to_string(fru_addr);
+    std::string inout = "@<dev> EID ";
+    inout += std::to_string(irecord->get_entity_id());
+    inout += ":";
+    inout += std::to_string(irecord->get_entity_instance());
     inout += " SID ";
     ///inout += std::to_string(irecord.get_sensor_number());
     inout += irecord->get_device_id_string();

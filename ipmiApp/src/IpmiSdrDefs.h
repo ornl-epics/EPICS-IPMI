@@ -5,10 +5,13 @@
  * 
 */
 
+#ifndef IPMIAPP_SRC_IPMISDRDEFS_H_
+#define IPMIAPP_SRC_IPMISDRDEFS_H_
+
 #include <map>
 #include <freeipmi/freeipmi.h>
 
-std::map<uint8_t, std::string> sdr_type_itos_map {
+static std::map<uint8_t, std::string> sdr_type_itos_map {
 	{IPMI_SDR_FORMAT_FULL_SENSOR_RECORD, "IPMI_SDR_FORMAT_FULL_SENSOR_RECORD"},
 	{IPMI_SDR_FORMAT_COMPACT_SENSOR_RECORD, "IPMI_SDR_FORMAT_COMPACT_SENSOR_RECORD"},
 	{IPMI_SDR_FORMAT_EVENT_ONLY_RECORD, "IPMI_SDR_FORMAT_EVENT_ONLY_RECORD"},
@@ -22,12 +25,12 @@ std::map<uint8_t, std::string> sdr_type_itos_map {
 	{IPMI_SDR_FORMAT_OEM_RECORD, "IPMI_SDR_FORMAT_OEM_RECORD"}
 };
 
-std::map<uint8_t, std::string> sdr_sensor_owner_id_type_itos_map {
+static std::map<uint8_t, std::string> sdr_sensor_owner_id_type_itos_map {
     {IPMI_SDR_SENSOR_OWNER_ID_TYPE_IPMB_SLAVE_ADDRESS, "IPMB_SLAVE_ADDRESS"},
     {IPMI_SDR_SENSOR_OWNER_ID_TYPE_SYSTEM_SOFTWARE_ID, "SYSTEM_SOFTWARE_ID"}
 };
 
-std::map<uint8_t, std::string> sensor_event_reading_type_code_itos_map {
+static std::map<uint8_t, std::string> sensor_event_reading_type_code_itos_map {
     {IPMI_EVENT_READING_TYPE_CODE_UNSPECIFIED, "Unspecified"},
     {IPMI_EVENT_READING_TYPE_CODE_THRESHOLD, "Threshold"},
     {IPMI_EVENT_READING_TYPE_CODE_TRANSITION_STATE, "Transition State"},
@@ -46,7 +49,7 @@ std::map<uint8_t, std::string> sensor_event_reading_type_code_itos_map {
     {IPMI_EVENT_READING_TYPE_CODE_OEM_MAX, "OEM Max"}
 };
 
-std::string get_sensor_event_reading_type_code(uint8_t val) {
+static std::string get_sensor_event_reading_type_code(uint8_t val) {
     std::string s;
 
     if(val >= IPMI_EVENT_READING_TYPE_CODE_OEM_MIN && val <= IPMI_EVENT_READING_TYPE_CODE_OEM_MAX) {
@@ -64,3 +67,5 @@ std::string get_sensor_event_reading_type_code(uint8_t val) {
     }
     return s + "Unknown";
 }
+
+#endif

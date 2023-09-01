@@ -84,15 +84,14 @@ std::shared_ptr<IpmiFruDevLocRec> FreeIpmiProvider::get_fru_by_device_slave_addr
     ss << "FRU address \'" << (unsigned) slave_address << "\' not found!\n";
     throw std::invalid_argument(ss.str());
 }
-int counter = 0;
+
 FreeIpmiProvider::Entity FreeIpmiProvider::get_entity_value(std::shared_ptr<IpmiSensorRecComp> sdrRec) {
 
     /** First check to see if this sensor matches the SDR. The SDR can change underneith us.
      * See Section 33.5 "Reading the SDR Repository" of the IPMI Specification.
     */
-    ///counter += 1;
     
-    if(compareSdrRecordKeys(m_ctx.sdr, *sdrRec) != 0 || counter >= 30) {
+    if(compareSdrRecordKeys(m_ctx.sdr, *sdrRec) != 0) {
         ///TODO: Dump the current IpmiSensorRecComp objects and reread the SDR
         std::stringstream ss;
         std::map<std::shared_ptr<IpmiSensorRecComp>, uint16_t>::iterator itr;

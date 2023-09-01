@@ -68,4 +68,42 @@ static std::string get_sensor_event_reading_type_code(uint8_t val) {
     return s + "Unknown";
 }
 
+static std::map<uint8_t, std::string> authenticationMap {
+    {0, "None"},
+    {1, "MD2"},
+    {2, "MD5"},
+    {4, "Straight-Password-Key"},
+    {5, "OEM Prop."},
+    {6, "RMCPPLUS"}
+};
+
+static std::string getAuthenticationString(uint8_t authType) {
+    std::map<uint8_t, std::string>::iterator itr;
+    itr = authenticationMap.find(authType);
+    if(itr != authenticationMap.end()) {
+        return itr->second;
+    }
+    return "Invalid-Authentication-Type";
+}
+
+static std::map<uint8_t, std::string> privilegeLevelMap {
+    {0, "Unspecified"},
+    {1, "Callback"},
+    {2, "User"},
+    {3, "Operator"},
+    {4, "Admin"},
+    {5, "OEM"},
+    {15, "No-Access"}
+};
+
+static std::string getPrivilegeLevelString(uint8_t level) {
+    std::map<uint8_t, std::string>::iterator itr;
+    itr = privilegeLevelMap.find(level);
+    if(itr != privilegeLevelMap.end()) {
+        return itr->second;
+    }
+    return "Invalid-Level";
+}
+
+
 #endif

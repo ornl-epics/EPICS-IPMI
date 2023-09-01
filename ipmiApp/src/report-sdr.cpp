@@ -19,13 +19,14 @@
 #include "EpRecord.h"
 #include "IpmiSensorRecFull.h"
 #include "IpmiFruDevLocRec.h"
+#include "IpmiSdrDefs.h"
 
 
 std::map<std::string,std::string> cli_args_map;
 std::map<std::string, std::string>::const_iterator itr;
 
-uint8_t authType = IPMI_AUTHENTICATION_TYPE_MD5;
-uint8_t privLevel = IPMI_PRIVILEGE_LEVEL_ADMIN;
+uint8_t authType = IPMI_AUTHENTICATION_TYPE_NONE;
+uint8_t privLevel = IPMI_PRIVILEGE_LEVEL_NO_ACCESS;
 
 
 int sessionTimeout = IPMI_SESSION_TIMEOUT_DEFAULT;
@@ -107,6 +108,32 @@ void ipmi_init() {
         throw std::invalid_argument(
             "Error: A password must be provided! Use the -p switch and provide a valid password.");
     
+    itr = cli_args_map.find("--auth-type");
+    if(itr != cli_args_map.end()) {
+        if (cli_args_map["--auth-type"] == "none")
+            authType = IPMI_AUTHENTICATION_TYPE_NONE;
+        else if (cli_args_map["--auth-type"] == "plain" || cli_args_map["--auth-type"] == "straight_password_key")
+            authType = IPMI_AUTHENTICATION_TYPE_STRAIGHT_PASSWORD_KEY;
+        else if (cli_args_map["--auth-type"] == "md2")
+            authType = IPMI_AUTHENTICATION_TYPE_MD2;
+        else if (cli_args_map["--auth-type"] == "md5")
+            authType = IPMI_AUTHENTICATION_TYPE_MD5;
+        else
+            throw std::runtime_error("invalid authentication type (choose from none,plain,md2,md5)");
+    }
+
+    itr = cli_args_map.find("--privilege-level");
+    if(itr != cli_args_map.end()) {
+        if (cli_args_map["--privilege-level"] == "admin")
+            privLevel = IPMI_PRIVILEGE_LEVEL_ADMIN;
+        else if (cli_args_map["--privilege-level"] == "operator")
+            privLevel = IPMI_PRIVILEGE_LEVEL_OPERATOR;
+        else if (cli_args_map["--privilege-level"] == "user")
+            privLevel = IPMI_PRIVILEGE_LEVEL_USER;
+        else
+            throw std::runtime_error("invalid privilege level (choose from user,operator,admin)");
+    }
+
     itr = cli_args_map.find("--create-report-file");
     if(itr != cli_args_map.end()) {
         report_file_name = itr->second.c_str();
@@ -145,15 +172,34 @@ void ipmi_connect() {
         rv = ipmi_ctx_errnum (ipmi);
 
         /* Match the error number up with an error string. */
-        char *str_error = ipmi_ctx_strerror (rv);
-        std::cout << str_error << std::endl;
+        std::string str_error = ipmi_ctx_strerror (rv);
 
         /* Get the error message associated with the context. This has been the same as the strerror */
-        str_error = ipmi_ctx_errormsg (ipmi);
-        std::cout << str_error << std::endl;
+        std::string str_errmsg = ipmi_ctx_errormsg (ipmi);
 
-        throw std::logic_error(
-            "Error: Could not create an ipmi connection using \'ipmi_ctx_open_outofband())\'.");
+        /* Not shure if ipmi_ctx_strerror() and ipmi_ctx_errormsg() always return the same messages.
+        *  So, use Lambda to concat strings if they are different...
+        */
+        auto getErrStr = [&str_error, &str_errmsg]() {
+            if(str_error.compare(str_errmsg) != 0) {
+                return "\'" + str_error + "\' Error Message: \'" + str_errmsg + "\'";
+            }
+            else
+                return "\'" + str_error + "\'";
+        };
+
+        throw std::runtime_error (
+            "Error: Could not create an ipmi connection using \'ipmi_ctx_open_outofband())\' Using:\n"
+            " * Hostname: \'" + std::string(hostname) + "\'\n"
+            " * Username: \'" + std::string(username) + "\'\n"
+            " * Password: \'" + std::string(password) + "\'\n"
+            " * Auth-Type: \'" + getAuthenticationString(authType) + "\'\n"
+            " * Privilege Level: \'" + getPrivilegeLevelString(privLevel) + "\'\n"
+            " * Sesion Timout: \'" + std::to_string(sessionTimeout) + "\'\n"
+            " * Retransmition Timeout: \'" + std::to_string(retransmissionTimeout) + "\'\n"
+            " * Workaround Flags: \'" + std::to_string(workaroundFlags) + "\'\n"
+            " * Flags: \'" + std::to_string(flags) + "\'\n"
+            "Error Code: \'" + std::to_string(rv) + "\' Error String: " + getErrStr());
     }
 }
 
@@ -220,12 +266,10 @@ void ipmi_parse_sdr() {
 
         if(record_type == IPMI_SDR_FORMAT_EVENT_ONLY_RECORD) {
             ///TODO: Handle Event type Records...
-            ///evntr.push_back(record_id);
         }
 
         if(record_type == IPMI_SDR_FORMAT_DEVICE_RELATIVE_ENTITY_ASSOCIATION_RECORD) {
             ///TODO: Handle Device Relative Entity Association Records...
-            ///rv = ipmi_sdr_parse_container_entity (sdr, NULL, 0, &container_entity_id, &container_entity_instance);
         }
 
         if(record_type == IPMI_SDR_FORMAT_FRU_DEVICE_LOCATOR_RECORD) {
@@ -234,8 +278,6 @@ void ipmi_parse_sdr() {
 
         if(record_type == IPMI_SDR_FORMAT_MANAGEMENT_CONTROLLER_DEVICE_LOCATOR_RECORD) {
             ///TODO: Handle Management Controller Device Locator Records...
-            ///mcdlr.push_back(record_id);
-            ///rv = ipmi_sdr_parse_entity_id_instance_type (sdr, NULL, 0, &entity_id, &entity_instance, &entity_instance_type);
         }
 
     }
@@ -303,7 +345,7 @@ int main(int argc, char const *argv[]) {
                     dbfile << epr->to_string() << std::endl;
                 }
             }
-            
+
             for(auto &sensor : orphandList) {
                 std::shared_ptr<EpRecord> epr = EpRecord::create(-1, sensor);
                 eprList.push_back(epr);

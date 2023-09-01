@@ -97,17 +97,14 @@ class Provider {
                 }
         };
         struct Task {
-            std::string address;
+            std::shared_ptr<IpmiSensorRecComp> sdrRec;
             std::function<void()> callback;
             Entity& entity;
-            std::shared_ptr<IpmiSensorRecComp> sdrRec;
-            ///const IpmiSensorRecComp &sdrRec;
-            ///Task(const IpmiSensorRecComp &sdrRec_, const std::string& address_, const std::function<void()>& cb, Entity& entity_)
-            Task(std::shared_ptr<IpmiSensorRecComp> sdrRec_, const std::string& address_, const std::function<void()>& cb, Entity& entity_)
-                : address(address_)
+            
+            Task(std::shared_ptr<IpmiSensorRecComp> sdrRec_, const std::function<void()>& cb, Entity& entity_)
+                : sdrRec(sdrRec_)
                 , callback(cb)
                 , entity(entity_)
-                , sdrRec(sdrRec_)
             {};
         };
 

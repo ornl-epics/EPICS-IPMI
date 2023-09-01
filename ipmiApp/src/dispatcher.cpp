@@ -260,25 +260,25 @@ void checkLink(const std::string& address) {
     if(!conn)
         throw std::invalid_argument("Link field can't find device \'@" + argMap["cid"] + "\'");
 
+    std::shared_ptr<IpmiSensorRecComp> sp (nullptr);
+
     std::string key = argMap["et"] + ":" + argMap["ei"] + ":";
 
     /** Are we identifying this record by sensor number or id string?*/
     if(argMap.find("sn") != argMap.end()) {
-        //std::shared_ptr<IpmiSensorRecComp> sp = frec->get_sensor_by_sensor_number(std::stoi(argMap["sn"], nullptr, 10));
         key += argMap["sn"];
-        std::shared_ptr<IpmiSensorRecComp> sp = conn->findSensorByMapKey(key);
-        ///std::cout << "1Object found: " << sp->get_device_id_string() << std::endl;
+        sp = conn->findSensorByMapKey(key);
     }
     else if(argMap.find("sid") != argMap.end()) {
-        ///std::shared_ptr<IpmiSensorRecComp> sp = frec->get_sensor_by_sensor_id_string(argMap["sid"]);
         key += argMap["sid"];
-        std::shared_ptr<IpmiSensorRecComp> sp = conn->findSensorByMapKey(key);
-        ///std::cout << "2Object found: " << sp->get_device_id_string() << std::endl;
+        sp = conn->findSensorByMapKey(key);
     }
-    else    /* We should have already thrown at this point*/
+    else
         throw std::runtime_error("Sensor parameter invalid in link field....");
     
-
+    if(!sp) {
+        throw std::runtime_error("Could not find sensor in map by key \'" + key + "\'");
+    }
 }
 
 bool scheduleGet(const std::string& address, const std::function<void()>& cb, Provider::Entity& entity)
@@ -295,27 +295,27 @@ bool scheduleGet(const std::string& address, const std::function<void()>& cb, Pr
 
    /** Second find the FRU*/
     std::string s;
-    std::shared_ptr<IpmiSensorRecComp> sp;
+    std::shared_ptr<IpmiSensorRecComp> sp (nullptr);
 
     std::string key = argMap["et"] + ":" + argMap["ei"] + ":";
 
     /** Are we identifying this record by sensor number or id string?*/
     if(argMap.find("sn") != argMap.end()) {
-        //std::shared_ptr<IpmiSensorRecComp> sp = frec->get_sensor_by_sensor_number(std::stoi(argMap["sn"], nullptr, 10));
         key += argMap["sn"];
         sp = conn->findSensorByMapKey(key);
-        ///std::cout << "1Object found: " << sp->get_device_id_string() << std::endl;
     }
     else if(argMap.find("sid") != argMap.end()) {
-        ///std::shared_ptr<IpmiSensorRecComp> sp = frec->get_sensor_by_sensor_id_string(argMap["sid"]);
         key += argMap["sid"];
         sp = conn->findSensorByMapKey(key);
-        ///std::cout << "2Object found: " << sp->get_device_id_string() << std::endl;
     }
     else    /* We should have already thrown at this point*/
         throw std::runtime_error("Sensor parameter invalid in link field....");
     
-    return conn->schedule( Provider::Task(sp, s, cb, entity) );
+    if(!sp) {
+        throw std::runtime_error("Could not find sensor in map by key \'" + key + "\'");
+    }
+
+    return conn->schedule( Provider::Task(sp, cb, entity) );
 }
 
 }; // namespace dispatcher

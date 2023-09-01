@@ -91,7 +91,7 @@ FreeIpmiProvider::Entity FreeIpmiProvider::get_entity_value(std::shared_ptr<Ipmi
      * See Section 33.5 "Reading the SDR Repository" of the IPMI Specification.
     */
     ///counter += 1;
-    /*
+    
     if(compareSdrRecordKeys(m_ctx.sdr, *sdrRec) != 0 || counter >= 30) {
         ///TODO: Dump the current IpmiSensorRecComp objects and reread the SDR
         std::stringstream ss;
@@ -106,7 +106,7 @@ FreeIpmiProvider::Entity FreeIpmiProvider::get_entity_value(std::shared_ptr<Ipmi
             ss << "SDR key for FRU: \'FRU-Id is Unavailable\' and Sensor-ID: \'";
         ss << sdrRec.get()->get_device_id_string() << "\' does not match key in repository." << std::endl;
         throw std::runtime_error(ss.str());
-    }*/
+    }
     Entity entity = read_sensor(m_ctx.sdr, m_ctx.sensors, *sdrRec);
     return entity;
 }
@@ -360,12 +360,13 @@ std::shared_ptr<IpmiSensorRecComp> FreeIpmiProvider::findSensorByMapKey(std::str
     if(itr != this->m_SidEntityMap.end()) {
         return itr->second;
     }
+
     itr = this->m_SnEntityMap.find(key);
     if(itr != this->m_SnEntityMap.end()) {
         return itr->second;
     }
-    throw std::runtime_error("ERROR! Could not find record based on map key: " + key);
 
+    return nullptr;
 }
 
 std::vector<FreeIpmiProvider::Entity> FreeIpmiProvider::getSensors()

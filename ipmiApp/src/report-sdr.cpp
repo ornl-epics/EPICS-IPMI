@@ -326,12 +326,14 @@ void write_report_file() {
     reportfile << " * SDR Erase Timestamp: " << (unsigned) SdrEraseTimestamp << std::endl;
     reportfile << "}" << std::endl;
 
+    /* Print the sensors that are not associated with FRUs */
     for(auto &fdlr: fruDevLocRecList) {
         reportfile << fdlr->report();
     }
 
-    /* Print the sensors that are not associated with FRUs */
+    int count = 1;
     for(auto &rec : orphandList) {
+        reportfile << "[" << count++ << "]" << std::endl;
         reportfile << rec->to_string();
     }
 
@@ -379,11 +381,14 @@ int main(int argc, char const *argv[]) {
             std::cout << " * SDR Erase Timestamp: " << (unsigned) SdrEraseTimestamp << std::endl;
             std::cout << "}" << std::endl;
 
+            /* Print the sensors that are not associated with FRUs */
             for(auto &fdlr: fruDevLocRecList) {
                 std::cout << fdlr->report();
             }
-            /* Print the sensors that are not associated with FRUs */
+            
+            int count = 1;
             for(auto &rec : orphandList) {
+                std::cout << "[" << count++ << "]" << std::endl;
                 std::cout << rec->to_string();
             }
         }

@@ -58,7 +58,7 @@ std::string IpmiFruDevLocRec::report() {
         ss << "Sensors attched (" << (unsigned int) this->sensor_records.size() << ")\n";
         int count = 1;
         for(auto &rec : this->sensor_records) {
-            ss << "[" << count << "]\n";
+            ss << "[" << (unsigned int) this->logical_fru_device_device_slave_address << ":" << count << "]\n";
             ss << rec->to_string();
             count++;
         }
@@ -82,10 +82,10 @@ void IpmiFruDevLocRec::parseAssociations(std::vector<std::shared_ptr<T>> &sensor
                 this->sensor_records.push_back(*itr);
                 itr = sensor_list.erase(itr);
         }
-        if(*itr == pos) {
+
+        if(*itr == pos && itr != sensor_list.end()) {
             itr++;
         }
-
     }
 }
 

@@ -41,10 +41,10 @@ const char *password = NULL;
 ipmi_ctx_t ipmi{nullptr};
 
 const std::string sdr_cache_path = "/tmp/ipmi_sdr_xxx.cache";
+bool create_report_file = false;
 std::string report_file_name;
-std::ofstream reportfile;
+bool create_epics_db_file = false;
 std::string epics_db_file_name;
-std::ofstream dbfile;
 ipmi_sdr_ctx_t sdr{nullptr};
 
 uint16_t record_count = 0;
@@ -136,14 +136,14 @@ void ipmi_init() {
 
     itr = cli_args_map.find("--create-report-file");
     if(itr != cli_args_map.end()) {
+        create_report_file = true;
         report_file_name = itr->second.c_str();
-        reportfile.open(report_file_name);
     }
 
     itr = cli_args_map.find("--create-db-file");
     if(itr != cli_args_map.end()) {
+        create_epics_db_file = true;
         epics_db_file_name = itr->second.c_str();
-        dbfile.open(epics_db_file_name);
     }
 
     ipmi = ipmi_ctx_create();
@@ -283,6 +283,62 @@ void ipmi_parse_sdr() {
     }
 }
 
+void write_db_file() {
+
+    std::ofstream dbfile;
+
+    dbfile.open(epics_db_file_name);
+
+    if(!dbfile.is_open())
+        throw std::runtime_error("ERROR! Cannot create EPICS .db file: \'" + epics_db_file_name + "\'");
+
+    std::vector<std::shared_ptr<EpRecord>> eprList;
+    for(auto &obj : fruDevLocRecList) {
+        
+        for(auto &sensor : obj->get_sensors()) {
+            std::shared_ptr<EpRecord> epr = EpRecord::create(obj->get_device_slave_address(), sensor);
+            eprList.push_back(epr);
+            dbfile << epr->to_string() << std::endl;
+        }
+    }
+
+    for(auto &sensor : orphandList) {
+        std::shared_ptr<EpRecord> epr = EpRecord::create(-1, sensor);
+        eprList.push_back(epr);
+        dbfile << epr->to_string() << std::endl;
+    }
+
+    dbfile.close();
+}
+
+void write_report_file() {
+    
+    std::ofstream reportfile;
+    reportfile.open(report_file_name);
+
+    if(!reportfile.is_open())
+        throw std::runtime_error("ERROR! Cannot create report file: \'" + report_file_name + "\'");
+
+    reportfile << hostname << " SDR Info {" << std::endl;
+    reportfile << " * SDR Record Count: " << record_count << "," << std::endl;
+    reportfile << " * SDR Version: " << (unsigned) SdrVersion << "," << std::endl;
+    reportfile << " * SDR Addition Timestamp: " << (unsigned) SdrAdditionTimestamp << "," << std::endl;
+    reportfile << " * SDR Erase Timestamp: " << (unsigned) SdrEraseTimestamp << std::endl;
+    reportfile << "}" << std::endl;
+
+    for(auto &fdlr: fruDevLocRecList) {
+        reportfile << fdlr->report();
+    }
+
+    /* Print the sensors that are not associated with FRUs */
+    for(auto &rec : orphandList) {
+        reportfile << rec->to_string();
+    }
+
+    reportfile.close();
+
+}
+
 int main(int argc, char const *argv[]) {
     
     try {
@@ -294,75 +350,54 @@ int main(int argc, char const *argv[]) {
         ipmi_connect();
         ipmi_open_cache();
         ipmi_parse_sdr();
+
+        /* Copy the compact and full sensor list into the orphand list. The orphand list will hold
+         * the sensors that are not associated with any FRUs
+         */
+        std::copy(sensRecFullList.begin(), sensRecFullList.end(), std::back_inserter(orphandList));
+        std::copy(sensRecCompactList.begin(), sensRecCompactList.end(), std::back_inserter(orphandList));
+
+        /* Iterate over the FRU Device Locator List and remove sensors from the orphand list that are
+         * associated with the FRU. The IpmiFruDevLocRec has its own list of sensor associations.
+         */
+        for(auto &fdlr: fruDevLocRecList) {
+            fdlr->parseAssociations(orphandList);
+        }
+
+        if(create_report_file)
+            write_report_file();
+
+        if(create_epics_db_file)
+            write_db_file();
         
         /* Print the Header information */
-        if(reportfile.is_open()) {
-            reportfile << hostname << " SDR Info {" << std::endl;
-            reportfile << " * SDR Record Count: " << record_count << "," << std::endl;
-            reportfile << " * SDR Version: " << (unsigned) SdrVersion << "," << std::endl;
-            reportfile << " * SDR Addition Timestamp: " << (unsigned) SdrAdditionTimestamp << "," << std::endl;
-            reportfile << " * SDR Erase Timestamp: " << (unsigned) SdrEraseTimestamp << std::endl;
-            reportfile << "}" << std::endl;
-        }
-        else {
+        if(!create_epics_db_file && !create_report_file) {
             std::cout << hostname << " SDR Info {" << std::endl;
             std::cout << " * SDR Record Count: " << record_count << "," << std::endl;
             std::cout << " * SDR Version: " << (unsigned) SdrVersion << "," << std::endl;
             std::cout << " * SDR Addition Timestamp: " << (unsigned) SdrAdditionTimestamp << "," << std::endl;
             std::cout << " * SDR Erase Timestamp: " << (unsigned) SdrEraseTimestamp << std::endl;
             std::cout << "}" << std::endl;
-        }
 
-        std::copy(sensRecFullList.begin(), sensRecFullList.end(), std::back_inserter(orphandList));
-        std::copy(sensRecCompactList.begin(), sensRecCompactList.end(), std::back_inserter(orphandList));
-
-        /* Look for FRU associations */
-        for(auto &fdlr: fruDevLocRecList) {
-
-            fdlr->parseAssociations(orphandList);
-            if(reportfile.is_open()) {
-                reportfile << fdlr->report();
-            }
-            else
+            for(auto &fdlr: fruDevLocRecList) {
                 std::cout << fdlr->report();
-        }
-
-        std::cout << "Full: " << sensRecFullList.size() << ", Compact: " << 
-        sensRecCompactList.size() << ", orphandList: " << orphandList.size() << std::endl;
-
-        /* Print the sensors that are not associated with FRUs */
-        for(auto &rec : orphandList) {
-            std::cout << rec->to_string();
-        }
-
-        if(dbfile.is_open()) {
-            std::vector<std::shared_ptr<EpRecord>> eprList;
-            for(auto &obj : fruDevLocRecList) {
-                
-                for(auto &sensor : obj->get_sensors()) {
-                    std::shared_ptr<EpRecord> epr = EpRecord::create(obj->get_device_slave_address(), sensor);
-                    eprList.push_back(epr);
-                    dbfile << epr->to_string() << std::endl;
-                }
             }
-
-            for(auto &sensor : orphandList) {
-                std::shared_ptr<EpRecord> epr = EpRecord::create(-1, sensor);
-                eprList.push_back(epr);
-                dbfile << epr->to_string() << std::endl;
+            /* Print the sensors that are not associated with FRUs */
+            for(auto &rec : orphandList) {
+                std::cout << rec->to_string();
             }
         }
+        
+            
 
+
+        /*  */
+        
     }
     catch(const std::exception& e) {
         std::cerr << e.what() << '\n';
     }
-    if(reportfile.is_open()) {
-        reportfile.close();
-    }
-    if(dbfile.is_open()){
-        dbfile.close();
-    }
+    
 }
 
 

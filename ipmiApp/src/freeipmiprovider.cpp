@@ -254,7 +254,7 @@ void FreeIpmiProvider::readSdrCache() {
     for(int i = 0; i < this->m_SdrRecordCount; i++, ipmi_sdr_cache_next(m_ctx.sdr)) {
         if(ipmi_sdr_parse_record_id_and_type (m_ctx.sdr, nullptr, 0, &record_id, &record_type)<0)
             throw std::runtime_error("Could not read record ID and record type in SDR.");
-        
+
         /* Add this record type to the list. When constructor is called we read more sensor data */
         insertRecord(m_ctx.sdr, record_id, record_type);
     }
@@ -354,6 +354,10 @@ void FreeIpmiProvider::insertIntoEntityMap(std::shared_ptr<IpmiSensorRecComp> p)
 std::shared_ptr<IpmiSensorRecComp> FreeIpmiProvider::findSensorByMapKey(std::string key) {
 
     std::map<std::string, std::shared_ptr<IpmiSensorRecComp>>::iterator itr;
+
+    ///for(auto &x : m_SidEntityMap) {
+        ///std::cout << "sid: " << x.first << std::endl;
+    ///}
 
     itr = this->m_SidEntityMap.find(key);
     if(itr != this->m_SidEntityMap.end()) {

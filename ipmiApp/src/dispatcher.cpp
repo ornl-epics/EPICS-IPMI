@@ -43,14 +43,16 @@ static std::map<std::string, LinkOptions> s_mapLinkOptions = {
 
 /// @brief Split string and place tokens into map
 /// @param argmap 
-/// @param link 
+/// @param link Field of EPICS record.
 static void parse_inout_str(std::map<std::string, std::string> &argMap, const std::string &link) {
 
     /** 
      * We are looking for inout string signatures like the following:
-     * <device-name> F<FRU number> SN <sensor-number>
-     * <device-name> F<FRU number> SID <sensor-id-string>
-     * Note: id-strings can contain spaces. This is slightly annoying,
+     * Device-Name SENSOR Entity-Id:Entity-Instance 'Sensor-Id-String'
+     * Example-1: @vt811 SENSOR 30:97 'CU TEMP1'
+     * Example-2: @vt811 SENSOR 29:97 'FAN1'
+     * Note: id-strings must be srurrounded in single quotes and can
+     * contain spaces. This is slightly annoying,
      * because on a VadaTech device, while reading the SDR, one device
      * id-string come back with a space at the end of the string. EPICS
      * trims this off the inout string automatically. So to make it work
@@ -59,48 +61,32 @@ static void parse_inout_str(std::map<std::string, std::string> &argMap, const st
      * E.g., "@vt811 F5 SID 'VT BIOS POST '"
     */
 
-    ///std::regex re_sid ("([a-zA-Z0-9]+) F *([0-9]+) SID *(.*)");
-
-    /* This one is used for @dev1 EID 10:98 SID VT AMC726 Tpch */
-    std::regex re_sid ("([a-zA-Z0-9]+) EID *([0-9]+) *: *([0-9]+) *SID *(.*)");
-
-    ///std::regex re_sn ("([a-zA-Z0-9]+) F *([0-9]+) SN *([0-9]+)");
-
-    /* This one is used for @dev1 EID 10:98 SN 39 */
-    std::regex re_sn ("([a-zA-Z0-9]+) EID *([0-9]+) *: *([0-9]+) *SN *([0-9]+)");
+    std::regex re_sensor ("([a-zA-Z0-9]+) ([sS][eE][nN][sS][oO][rR]) *([0-9]+) *: *([0-9]+) *\'(.*)\'");
     std::smatch re_m;
 
     /**
      * cid = connection ID
+     * type = object type: sensor, led, etc.
      * et = entity type
      * ei = entity instance
      * sid = sensor id-string
-     * sn = sensor number
-     * Determine which flavor of inout patterns we are using:
-     * SID (Sensor Id String) Or SN (Sensor Number)
     */
 
     /* Do we have SID? */
-    if(std::regex_match(link, re_m, re_sid)) {
+    if(std::regex_match(link, re_m, re_sensor)) {
         argMap["cid"] = re_m[1];
-        argMap["et"] = re_m[2];
-        argMap["ei"] = re_m[3];
+        argMap["type"] = re_m[2];
+        argMap["et"] = re_m[3];
+        argMap["ei"] = re_m[4];
 
         /** The quotes were only used to keep whitespace characters that
          *  are unknowingly at the end of the strings... Take them off
          *  now and preserve those whitespace characters.
         */
-        for(auto &ch : re_m[4].str()) {
+        for(auto &ch : re_m[5].str()) {
             if(ch != '\'')
                 argMap["sid"].push_back(ch);
         }
-    }
-    /* Or do we have SN? */
-    else if(std::regex_match(link, re_m, re_sn)) {
-        argMap["cid"] = re_m[1];
-        argMap["et"] = re_m[2];
-        argMap["ei"] = re_m[3];
-        argMap["sn"] = re_m[4];
     }
     else {  /* Something is wrong. Throw now! */
         throw std::invalid_argument("Link field does not contain proper arguments. \'" + link + "\'");
@@ -264,12 +250,8 @@ void checkLink(const std::string& address) {
 
     std::string key = argMap["et"] + ":" + argMap["ei"] + ":";
 
-    /** Are we identifying this record by sensor number or id string?*/
-    if(argMap.find("sn") != argMap.end()) {
-        key += argMap["sn"];
-        sp = conn->findSensorByMapKey(key);
-    }
-    else if(argMap.find("sid") != argMap.end()) {
+    /** Find the sensor in the map by the key created: entity-type:entity-instance:sensor-id-string*/
+    if(argMap.find("sid") != argMap.end()) {
         key += argMap["sid"];
         sp = conn->findSensorByMapKey(key);
     }
@@ -299,12 +281,8 @@ bool scheduleGet(const std::string& address, const std::function<void()>& cb, Pr
 
     std::string key = argMap["et"] + ":" + argMap["ei"] + ":";
 
-    /** Are we identifying this record by sensor number or id string?*/
-    if(argMap.find("sn") != argMap.end()) {
-        key += argMap["sn"];
-        sp = conn->findSensorByMapKey(key);
-    }
-    else if(argMap.find("sid") != argMap.end()) {
+    /** Find the sensor in the map by the key created: entity-type:entity-instance:sensor-id-string*/
+    if(argMap.find("sid") != argMap.end()) {
         key += argMap["sid"];
         sp = conn->findSensorByMapKey(key);
     }

@@ -76,13 +76,14 @@ std::shared_ptr<EpRecord> EpRecord::create(const int fru_addr, std::shared_ptr<I
 
     name += dev_id_str;
 
-    std::string inout = "@<dev> EID ";
+    std::string inout = "@<dev> sensor ";
     inout += std::to_string(irecord->get_entity_id());
     inout += ":";
     inout += std::to_string(irecord->get_entity_instance());
-    inout += " SID ";
+    inout += " \'";
     ///inout += std::to_string(irecord.get_sensor_number());
     inout += irecord->get_device_id_string();
+    inout += "\'";
 
     std::string egu = "";
     if(irecord->get_sensor_base_unit_type_str() != "unspecified") {

@@ -28,18 +28,6 @@ namespace dispatcher {
 
 static std::map<std::string, std::shared_ptr<FreeIpmiProvider>> g_connections; //!< Global map of connections.
 static epicsMutex g_mutex; //!< Global mutex to protect g_connections.
-enum LinkOptions {
-    NOT_DEFINED,
-    SID,    /** Sensor ID String */
-    SN      /** Sensor Number */
-
-};
-
-static std::map<std::string, LinkOptions> s_mapLinkOptions = {
-    {"null", LinkOptions::NOT_DEFINED},
-    {"SID", LinkOptions::SID},
-    {"SN", LinkOptions::SN}
-    };
 
 /// @brief Split string and place tokens into map
 /// @param argmap 

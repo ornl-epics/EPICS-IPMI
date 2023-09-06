@@ -47,10 +47,10 @@ FreeIpmiProvider::Entity FreeIpmiProvider::getSensor(ipmi_sdr_ctx_t sdr, ipmi_se
     throw Provider::comm_error("sensor not found");
 }
 
-int FreeIpmiProvider::compareSdrRecordKeys(ipmi_sdr_ctx_t sdr, const IpmiSensorRecComp &record) {
+int FreeIpmiProvider::compareSdrRecordKeys(ipmi_sdr_ctx_t sdr, const std::shared_ptr<IpmiSensorRecComp> record) {
 
     /** Find the record in the SDR that we 'think' our record is pointing at.*/
-    int rv = ipmi_sdr_cache_search_record_id (sdr, record.get_record_id());
+    int rv = ipmi_sdr_cache_search_record_id (sdr, record->get_record_id());
 
     /** Get the record-key from the SDR record and see if it matches the key of our record.
      * FYI See Section 33.5 "Reading the SDR Repository" of the IPMI Specification about record-keys
@@ -66,21 +66,22 @@ int FreeIpmiProvider::compareSdrRecordKeys(ipmi_sdr_ctx_t sdr, const IpmiSensorR
     uint8_t _sensor_number = 0;
     rv = ipmi_sdr_parse_sensor_number (sdr, NULL, 0, &_sensor_number);
     
-    if(record.get_sensor_owner_id() == _sensor_owner_id)
-        if(record.get_sensor_owner_lun() == _sensor_owner_lun)
-            if(record.get_channel_number() == _channel_number)
-                if(record.get_sensor_number() == _sensor_number)
+    if(record->get_sensor_owner_id() == _sensor_owner_id)
+        if(record->get_sensor_owner_lun() == _sensor_owner_lun)
+            if(record->get_channel_number() == _channel_number)
+                if(record->get_sensor_number() == _sensor_number)
                     return 0;
     return -1;
 }
 
-FreeIpmiProvider::Entity FreeIpmiProvider::read_sensor(ipmi_sdr_ctx_t sdr, ipmi_sensor_read_ctx_t sensors, const IpmiSensorRecComp &record) {
+FreeIpmiProvider::Entity FreeIpmiProvider::read_sensor(ipmi_sdr_ctx_t sdr, ipmi_sensor_read_ctx_t sensors,
+    const std::shared_ptr<IpmiSensorRecComp> record) {
     Entity entity;
     int sharedOffset = 0; // TODO: shared sensors support
     uint8_t readingRaw = 0;
     double* reading = nullptr;
     uint16_t eventMask = 0;
-    const common::buffer<uint8_t, IPMI_SDR_MAX_RECORD_LENGTH> &data = record.get_record_data();
+    const common::buffer<uint8_t, IPMI_SDR_MAX_RECORD_LENGTH> &data = record->get_record_data();
 
     int rv = ipmi_sensor_read(sensors, data.data, data.size, sharedOffset, &readingRaw, &reading, &eventMask);
     if(reading) {

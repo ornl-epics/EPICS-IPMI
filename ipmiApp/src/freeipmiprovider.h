@@ -151,8 +151,9 @@ class FreeIpmiProvider : public Provider
         std::shared_ptr<IpmiFruDevLocRec> get_fru_by_device_slave_address(const uint8_t slave_address);
         ///Entity get_entity_value(const IpmiSensorRecComp &sdrRec) override;
         Entity get_entity_value(std::shared_ptr<IpmiSensorRecComp> sdrRec) override;
-        static Entity read_sensor(ipmi_sdr_ctx_t sdr, ipmi_sensor_read_ctx_t sensors, const IpmiSensorRecComp &record);
-        static int compareSdrRecordKeys(ipmi_sdr_ctx_t sdr, const IpmiSensorRecComp &record);
+        static Entity read_sensor(ipmi_sdr_ctx_t sdr, ipmi_sensor_read_ctx_t sensors,
+            const std::shared_ptr<IpmiSensorRecComp> record);
+        static int compareSdrRecordKeys(ipmi_sdr_ctx_t sdr, const std::shared_ptr<IpmiSensorRecComp> record);
 
         /**
          * @brief Scans for all sensors in the connected IPMI device.

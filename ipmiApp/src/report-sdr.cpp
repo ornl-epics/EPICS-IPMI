@@ -177,7 +177,7 @@ void ipmi_connect() {
         /* Get the error message associated with the context. This has been the same as the strerror */
         std::string str_errmsg = ipmi_ctx_errormsg (ipmi);
 
-        /* Not shure if ipmi_ctx_strerror() and ipmi_ctx_errormsg() always return the same messages.
+        /* Not sure if ipmi_ctx_strerror() and ipmi_ctx_errormsg() always return the same messages.
         *  So, use Lambda to concat strings if they are different...
         */
         auto getErrStr = [&str_error, &str_errmsg]() {

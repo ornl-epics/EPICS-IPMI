@@ -74,11 +74,7 @@ void Provider::tasksThread()
         m_tasks.mutex.unlock();
 
         try {
-            /**
-            auto entity = getEntity(task.address);
-            for (auto& kv: entity) {
-                task.entity[kv.first] = std::move(kv.second);
-            }*/
+            
             Entity ent = get_entity_value(task.sdrRec);
             for (auto& kv: ent) {
                 task.entity[kv.first] = std::move(kv.second);

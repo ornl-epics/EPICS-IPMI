@@ -76,23 +76,62 @@ int FreeIpmiProvider::compareSdrRecordKeys(ipmi_sdr_ctx_t sdr, const std::shared
 
 FreeIpmiProvider::Entity FreeIpmiProvider::read_sensor(ipmi_sdr_ctx_t sdr, ipmi_sensor_read_ctx_t sensors,
     const std::shared_ptr<IpmiSensorRecComp> record) {
+
     Entity entity;
-    int sharedOffset = 0; // TODO: shared sensors support
+    uint8_t sharedOffset = 0; // TODO: shared sensors support
     uint8_t readingRaw = 0;
     double* reading = nullptr;
     uint16_t eventMask = 0;
     const common::buffer<uint8_t, IPMI_SDR_MAX_RECORD_LENGTH> &data = record->get_record_data();
 
     int rv = ipmi_sensor_read(sensors, data.data, data.size, sharedOffset, &readingRaw, &reading, &eventMask);
-    if(reading) {
-        entity["VAL"] = std::round(*reading * 100.0) / 100.0;
+
+    if(rv != 1) {
+
+        int err_num = ipmi_sensor_read_ctx_errnum (sensors);
+        std::string str_error = ipmi_sensor_read_ctx_strerror (err_num);
+        std::string str_errmsg = ipmi_sensor_read_ctx_errormsg (sensors);
+
+        /** Not sure if ipmi_sensor_read_ctx_strerror() and ipmi_sensor_read_ctx_errormsg()
+         * always return the same messages.
+         * So, use Lambda to concat strings if they are different...
+         */
+        auto getErrStr = [&str_error, &str_errmsg]() {
+            if(str_error.compare(str_errmsg) != 0) {
+                return "\'" + str_error + "\' Error Message: \'" + str_errmsg + "\'";
+            }
+            else
+                return "\'" + str_error + "\'";
+        };
+
+        throw std::runtime_error (
+            "Error: Could not read sensor for {\n"
+            " * Entity-Id: \'" + std::to_string(record->get_entity_id()) + "\'\n"
+            " * Entity-Instance: \'" + std::to_string(record->get_entity_instance()) + "\'\n"
+            " * Sensor-Id-String: \'" + record->get_device_id_string() + "\'\n"
+            "}\n"
+            "Error Code: \'" + std::to_string(err_num) + "\' Error String: " + getErrStr());
     }
-    else
-        entity["VAL"] = readingRaw;
-    
-    if(reading) {
-        free(reading);
+
+    /** Only threshold type sensors return a reading-value. The reset of the sensors types
+     *  return the event-bit-mask only as the sensor reading-value; which represents an
+     *  enumerated state. See section 42 in the IPMI specification.
+     *  Note: Threshold sensors return two values: 1) the sensor-reading, 2) the even-mask.
+     *  See Table 42-, Generic Event/Reading Type Codes for threshold events.
+     *  TODO: Maybe handle threshold events somehow?
+    */
+    if(IPMI_EVENT_READING_TYPE_CODE_IS_THRESHOLD(record->get_event_reading_type_code())) {
+        if(reading) {
+            entity["VAL"] = std::round(*reading * 100.0) / 100.0;
+            free(reading);
+        }
+        else
+            entity["VAL"] = (double) eventMask;
     }
+    else {
+        entity["VAL"] = (double) eventMask;
+    }
+
     return entity;
 }
 

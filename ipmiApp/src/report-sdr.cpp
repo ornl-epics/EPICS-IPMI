@@ -82,8 +82,37 @@ void parse_args(int argc, char const *argv[], std::map<std::string,std::string> 
 
 }
 
+void print_help() {
+    std::stringstream ss;
+    ss << "Usage: report-sdr [-H hostname or ip address] [-u username] [-p password]\n";
+    ss << "[--auth-type [none, plain, md2, md5]] [--privilege-level [admin, operator, user]]\n";
+    ss << "[--create-report-file [FILE NAME]] [--create-db-file [FILE NAME]]\n";
+    ss << "Options:\n";
+    ss << "    -H Hostname or IP address (DNS name or 123.456.789.123)\n";
+    ss << "    -u Username\n";
+    ss << "    -p Password\n";
+    ss << "    --auth-type Authentication Type (none, plain, md2, md5)\n";
+    ss << "    --privilege-level Privilege Level (admin, operator, user)\n";
+    ss << "    --create-report-file Create a file that contains the SDR data\n";
+    ss << "    --create-db-file Create an EPICS database file from the SDR data\n\n";
+    ss << "Examples:\n";
+    ss << "To print the SDR to the console:\n";
+    ss << "./report-sdr -H 192.168.201.205 -u \"ADMIN\" -p \"Password0\" --auth-type md5 --privilege-level admin\n\n";
+    ss << "To create an EPICS database from the SDR:\n";
+    ss << "./report-sdr -H 192.168.201.205 -u \"ADMIN\" -p \"Password0\" --auth-type md5 --privilege-level admin ";
+    ss << "--create-db-file /tmp/server.db\n";
+    std::cout << ss.str() << std::endl;
+    
+    exit(EXIT_SUCCESS);
+}
+
 void ipmi_init() {
 
+    itr = cli_args_map.find("--help");
+    if(itr != cli_args_map.end()) {
+        print_help();
+    }
+    
     itr = cli_args_map.find("-H");
     if(itr != cli_args_map.end()) {
         hostname = itr->second.c_str();
@@ -392,11 +421,6 @@ int main(int argc, char const *argv[]) {
                 std::cout << rec->to_string();
             }
         }
-        
-            
-
-
-        /*  */
         
     }
     catch(const std::exception& e) {

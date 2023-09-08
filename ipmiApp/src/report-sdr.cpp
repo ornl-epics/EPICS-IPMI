@@ -84,9 +84,12 @@ void parse_args(int argc, char const *argv[], std::map<std::string,std::string> 
 
 void print_help() {
     std::stringstream ss;
+    ss << "\n";
     ss << "Usage: report-sdr [-H hostname or ip address] [-u username] [-p password]\n";
     ss << "[--auth-type [none, plain, md2, md5]] [--privilege-level [admin, operator, user]]\n";
-    ss << "[--create-report-file [FILE NAME]] [--create-db-file [FILE NAME]]\n";
+    ss << "[--create-report-file [FILE NAME]] [--create-db-file [FILE NAME]]\n\n";
+    ss << "Description\n";
+    ss << "    Read the SDR (Sensor Device Repository) and display the sensor records.\n\n";
     ss << "Options:\n";
     ss << "    -H Hostname or IP address (DNS name or 123.456.789.123)\n";
     ss << "    -u Username\n";

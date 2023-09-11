@@ -78,9 +78,10 @@ void IpmiFruDevLocRec::parseAssociations(std::vector<std::shared_ptr<T>> &sensor
         }
         /** TODO: Make a note about how fans and cooling unit are missing from the device relative association record.*/
         else if(this->fru_entity_id == IPMI_ENTITY_ID_COOLING_UNIT_COOLING_DOMAIN && itr->get()->get_sensor_type() == IPMI_SENSOR_TYPE_FAN) {
-            if(itr->get()->get_entity_instance() == this->fru_entity_instance)
+            if(itr->get()->get_entity_instance() == this->fru_entity_instance) {
                 this->sensor_records.push_back(*itr);
                 itr = sensor_list.erase(itr);
+            }
         }
 
         if(*itr == pos && itr != sensor_list.end()) {

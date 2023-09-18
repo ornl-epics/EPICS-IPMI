@@ -7,6 +7,7 @@
 
 #include "EpRecord.h"
 #include "EpAiRecord.h"
+#include "EpBiRecord.h"
 #include <algorithm>
 #include <sstream>
 
@@ -91,4 +92,26 @@ std::shared_ptr<EpRecord> EpRecord::create(const int fru_addr, std::shared_ptr<I
     }
     
     return std::make_shared<EpRecord>(EpAiRecord(name, inout, "1 second", egu, "1"));
+}
+
+std::shared_ptr<EpRecord> EpRecord::create(const int fru_addr, std::shared_ptr<PicmgLed> picmg_led) {
+
+    std::string name = "$(P):";
+    if(fru_addr >= 0) {
+        name += "FRU";
+        name += std::to_string(fru_addr);
+        name += "_";
+    }
+    
+    name += "LED_";
+    name += picmg_led.get()->getLedColor();
+
+    std::string inout = "@<dev> PICMG_LED ";
+    inout += std::to_string(picmg_led.get()->getLogicalFruDeviceDeviceSlaveAddress());
+    inout += ":";
+    inout += std::to_string(picmg_led.get()->getLedId());
+
+    std::string egu = "";
+    
+    return std::make_shared<EpRecord>(EpBiRecord(name, inout, "1 second", "OFF", "ON"));
 }

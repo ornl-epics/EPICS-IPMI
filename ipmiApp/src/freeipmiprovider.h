@@ -147,6 +147,7 @@ class FreeIpmiProvider : public Provider
         ~FreeIpmiProvider();
 
         std::shared_ptr<IpmiSensorRecComp> findSensorByMapKey(std::string key);
+        std::shared_ptr<PicmgLed> getPicmgLedByAddress(uint8_t fru_id, uint8_t led_id);
         ///const IpmiFruDevLocRec &get_fru_by_device_slave_address(const uint8_t slave_address);
         std::shared_ptr<IpmiFruDevLocRec> get_fru_by_device_slave_address(const uint8_t slave_address);
         ///Entity get_entity_value(const IpmiSensorRecComp &sdrRec) override;

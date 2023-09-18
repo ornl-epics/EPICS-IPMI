@@ -18,6 +18,7 @@
 #include <map>
 #include <vector>
 #include "IpmiSensorRecComp.h"
+#include "PicmgLed.h"
 
 #if __cplusplus > 201402L
 #include <variant>
@@ -103,6 +104,11 @@ class Provider {
             
             Task(std::shared_ptr<IpmiSensorRecComp> sdrRec_, const std::function<void()>& cb, Entity& entity_)
                 : sdrRec(sdrRec_)
+                , callback(cb)
+                , entity(entity_)
+            {};
+            Task(std::shared_ptr<PicmgLed> led_, const std::function<void()>& cb, Entity& entity_)
+                : sdrRec(nullptr)
                 , callback(cb)
                 , entity(entity_)
             {};

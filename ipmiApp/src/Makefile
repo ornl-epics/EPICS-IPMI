@@ -35,6 +35,7 @@ epicsipmi_SRCS += IpmiSdrRec.cpp
 epicsipmi_SRCS += IpmiSensorRecComp.cpp
 epicsipmi_SRCS += IpmiSensorRecFull.cpp
 epicsipmi_SRCS += IpmiFruDevLocRec.cpp
+epicsipmi_SRCS += PicmgLed.cpp
 
 epicsipmi_SRCS += epicsshell.cpp
 epicsipmi_SRCS += epicsdevice.cpp
@@ -69,6 +70,8 @@ report-sdr_SRCS += IpmiSensorRecFull.cpp
 report-sdr_SRCS += IpmiFruDevLocRec.cpp
 report-sdr_SRCS += EpRecord.cpp
 report-sdr_SRCS += EpAiRecord.cpp
+report-sdr_SRCS += EpBiRecord.cpp
+report-sdr_SRCS += PicmgLed.cpp
 report-sdr_LIBS += freeipmi
 
 #===========================

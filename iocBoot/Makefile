@@ -5,6 +5,6 @@ TARGETS = envPaths
 ENGINEER="Brad Webb"
 LOCATION="ics-srv-softioc"
 include $(TOP)/configure/RULES.ioc
-include $(IOC_COMMON)/configure/RULES.iocBoot.soft
+#include $(IOC_COMMON)/configure/RULES.iocBoot.soft
 
 

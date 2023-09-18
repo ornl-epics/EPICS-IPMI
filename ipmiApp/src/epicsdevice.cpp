@@ -9,6 +9,7 @@
  */
 
 #include <aiRecord.h>
+#include <biRecord.h>
 #include <alarm.h>
 #include <callback.h>
 #include <cantProceed.h>
@@ -96,6 +97,11 @@ static long processAiRecord(aiRecord* rec)
     return 2;
 }
 
+static long processBiRecord(biRecord* rec) {
+
+    return 0;
+}
+
 static long processStringinRecord(stringinRecord* rec)
 {
     IpmiRecord* ctx = reinterpret_cast<IpmiRecord*>(rec->dpvt);
@@ -180,6 +186,25 @@ struct {
    NULL                                 // special_linconv
 };
 epicsExportAddress(dset, devEpicsIpmiAi);
+
+struct {
+   long            number;
+   DEVSUPFUN       report;
+   DEVSUPFUN       init;
+   DEVSUPFUN       init_record;
+   DEVSUPFUN       get_ioint_info;
+   DEVSUPFUN       read_bi;
+   DEVSUPFUN       special_linconv;
+} devEpicsIpmiBi = {
+   6, // number
+   NULL,                                // report
+   NULL,                                // once-per-IOC initialization
+   (DEVSUPFUN)initInpRecord<biRecord>,  // once-per-record initialization
+   NULL,                                // get_ioint_info
+   (DEVSUPFUN)processBiRecord,
+   NULL                                 // special_linconv
+};
+epicsExportAddress(dset, devEpicsIpmiBi);
 
 struct {
    long            number;

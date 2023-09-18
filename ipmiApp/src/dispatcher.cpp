@@ -50,6 +50,7 @@ static void parse_inout_str(std::map<std::string, std::string> &argMap, const st
     */
 
     std::regex re_sensor ("([a-zA-Z0-9]+) ([sS][eE][nN][sS][oO][rR]) *([0-9]+) *: *([0-9]+) *\'(.*)\'");
+    std::regex re_picmg_led("([a-zA-Z0-9]+) ([pP][iI][cC][mM][gG]_[lL][eE][dD]) *([0-9]+) *: *([0-9]+)");
     std::smatch re_m;
 
     /**
@@ -75,6 +76,12 @@ static void parse_inout_str(std::map<std::string, std::string> &argMap, const st
             if(ch != '\'')
                 argMap["sid"].push_back(ch);
         }
+    }
+    else if(std::regex_match(link, re_m, re_picmg_led)) {
+        argMap["cid"] = re_m[1];
+        argMap["type"] = re_m[2];
+        argMap["fru_id"] = re_m[3];
+        argMap["led_id"] = re_m[4];
     }
     else {  /* Something is wrong. Throw now! */
         throw std::invalid_argument("Link field does not contain proper arguments. \'" + link + "\'");
@@ -234,21 +241,35 @@ void checkLink(const std::string& address) {
     if(!conn)
         throw std::invalid_argument("Link field can't find device \'@" + argMap["cid"] + "\'");
 
-    std::shared_ptr<IpmiSensorRecComp> sp (nullptr);
-
-    std::string key = argMap["et"] + ":" + argMap["ei"] + ":";
-
-    /** Find the sensor in the map by the key created: entity-type:entity-instance:sensor-id-string*/
-    if(argMap.find("sid") != argMap.end()) {
-        key += argMap["sid"];
-        sp = conn->findSensorByMapKey(key);
+    /** TODO: Handle case insensitive */
+    if(argMap["type"] == "PICMG_LED") {
+        std::shared_ptr<PicmgLed> led = nullptr;
+        uint8_t fruId = (std::stoul(argMap["fru_id"]) & 0xFF);
+        uint8_t ledId = (std::stoul(argMap["led_id"]) & 0xFF);
+        led = conn->getPicmgLedByAddress(fruId, ledId);
+        if(led == nullptr) {
+            throw std::runtime_error("Could not find PICMG_LED by FRU-ID \'" + argMap["fru_id"] +
+            "\' and LED-ID \'" + argMap["led_id"] + "\' in record link field.");
+        }
+        return;
     }
-    else
-        throw std::runtime_error("Sensor parameter invalid in link field....");
-    
-    if(!sp) {
-        throw std::runtime_error("Could not find sensor in map by key \'" + key + "\'");
-    }
+    else if(argMap["type"] == "sensor") {
+        std::shared_ptr<IpmiSensorRecComp> sp (nullptr);
+        std::string key = argMap["et"] + ":" + argMap["ei"] + ":";
+
+        /** Find the sensor in the map by the key created: entity-type:entity-instance:sensor-id-string*/
+        if(argMap.find("sid") != argMap.end()) {
+            key += argMap["sid"];
+            sp = conn->findSensorByMapKey(key);
+        }
+        else
+            throw std::runtime_error("Sensor parameter invalid in link field....");
+        
+        if(!sp) {
+            throw std::runtime_error("Could not find sensor in map by key \'" + key + "\'");
+        }
+        return;
+    }   
 }
 
 bool scheduleGet(const std::string& address, const std::function<void()>& cb, Provider::Entity& entity)

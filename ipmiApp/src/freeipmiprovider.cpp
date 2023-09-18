@@ -316,7 +316,7 @@ void FreeIpmiProvider::insertRecord(ipmi_sdr_ctx_t sdr, uint16_t record_id, uint
         * FRU to sensor relationships. 
         */
     if(record_type == IPMI_SDR_FORMAT_FRU_DEVICE_LOCATOR_RECORD) {
-        this->fruDevLocRecList.push_back(std::make_shared<IpmiFruDevLocRec>(m_ctx.sdr, record_id, record_type));
+        this->fruDevLocRecList.push_back(std::make_shared<IpmiFruDevLocRec>(m_ctx.ipmi, m_ctx.sdr, record_id, record_type));
     }
 
     if(record_type == IPMI_SDR_FORMAT_MANAGEMENT_CONTROLLER_DEVICE_LOCATOR_RECORD) {
@@ -367,6 +367,16 @@ std::shared_ptr<IpmiSensorRecComp> FreeIpmiProvider::findSensorByMapKey(std::str
         return itr->second;
     }
 
+    return nullptr;
+}
+
+std::shared_ptr<PicmgLed> FreeIpmiProvider::getPicmgLedByAddress(uint8_t fru_id, uint8_t led_id) {
+    
+    for(auto &fru : this->fruDevLocRecList) {
+        if(fru.get()->get_device_slave_address() == fru_id) {
+            return fru.get()->getStatusLedById(led_id);
+        }
+    }
     return nullptr;
 }
 

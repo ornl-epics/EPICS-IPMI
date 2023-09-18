@@ -305,13 +305,12 @@ void ipmi_parse_sdr() {
         }
 
         if(record_type == IPMI_SDR_FORMAT_FRU_DEVICE_LOCATOR_RECORD) {
-            fruDevLocRecList.push_back(std::make_shared<IpmiFruDevLocRec>(sdr, record_id, record_type));
+            fruDevLocRecList.push_back(std::make_shared<IpmiFruDevLocRec>(ipmi, sdr, record_id, record_type));
         }
 
         if(record_type == IPMI_SDR_FORMAT_MANAGEMENT_CONTROLLER_DEVICE_LOCATOR_RECORD) {
             ///TODO: Handle Management Controller Device Locator Records...
         }
-
     }
 }
 
@@ -325,7 +324,14 @@ void write_db_file() {
         throw std::runtime_error("ERROR! Cannot create EPICS .db file: \'" + epics_db_file_name + "\'");
 
     std::vector<std::shared_ptr<EpRecord>> eprList;
+
     for(auto &obj : fruDevLocRecList) {
+
+        for(auto &led : obj.get()->getStatusLeds()) {
+            std::shared_ptr<EpRecord> epr = EpRecord::create(obj->get_device_slave_address(), led);
+            eprList.push_back(epr);
+            dbfile << epr->to_string() << std::endl;
+        }
         
         for(auto &sensor : obj->get_sensors()) {
             std::shared_ptr<EpRecord> epr = EpRecord::create(obj->get_device_slave_address(), sensor);
@@ -370,7 +376,6 @@ void write_report_file() {
     }
 
     reportfile.close();
-
 }
 
 int main(int argc, char const *argv[]) {

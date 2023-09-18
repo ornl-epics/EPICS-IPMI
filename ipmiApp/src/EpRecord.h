@@ -14,6 +14,7 @@
 #include <iostream>
 #include <sstream>
 #include "IpmiSensorRecComp.h"
+#include "PicmgLed.h"
 
 enum link_type {
     INP = 0,
@@ -52,6 +53,7 @@ public:
     int add_field(const std::vector<std::string> &valid_fields, const std::string field_name, const std::string field_value);
     std::string to_string();
     static std::shared_ptr<EpRecord> create(const int fru_addr, std::shared_ptr<IpmiSensorRecComp> ipmi_record);
+    static std::shared_ptr<EpRecord> create(const int fru_addr, std::shared_ptr<PicmgLed> picmg_led);
 };
 
 #endif

@@ -107,11 +107,6 @@ class Provider {
                 , callback(cb)
                 , entity(entity_)
             {};
-            Task(std::shared_ptr<PicmgLed> led_, const std::function<void()>& cb, Entity& entity_)
-                : sdrRec(nullptr)
-                , callback(cb)
-                , entity(entity_)
-            {};
         };
 
         struct comm_error : public std::runtime_error {

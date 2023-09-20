@@ -352,7 +352,7 @@ FreeIpmiProvider::Entity FreeIpmiProvider::readPicmgLed(ipmi_ctx_t ipmi, const s
 
     int ret = ipmi_cmd(ipmi, IPMI_BMC_IPMB_LUN_BMC, IPMI_NET_FN_PICMG_RQ, obj_cmd_rq, obj_cmd_rs);
     if (ret < 0) {
-        throw std::runtime_error("ERROR! IPMI command returned a failer code for object command req/rsp: " + 
+        throw std::runtime_error("ERROR! IPMI command returned a failure code for object command req/rsp: " + 
         std::string(ipmi_ctx_errormsg(ipmi)));
     }
 

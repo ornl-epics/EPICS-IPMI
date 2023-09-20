@@ -40,6 +40,41 @@ enum {
     PICMG_BUSED_RESOURCE_CMD                   = 0x17,
 };
 
+/**
+ * When calling the two funcions below on the VadaTech equipment with the FRU names
+ * in the exclusion list, they will throw errors. Their errors are not bad because
+ * we are looking for LEDs on FRUs and the FRUs in the list are not physical hardware
+ * with LEDs. And the one named "TELCO ALARM" will actually not return an error
+ * right away but will instead timeout which hangs the process for a few seconds
+ * and this is annoying to watch during IOC startup. So, this is just a way for now to
+ * silence the errors on startup so the IOC engineer doesn't think there is a problem
+ * When they see the boot process hang and display errors about bad completion codes.
+ * 
+ * I can't find another way to exclude asking these guys if they have LEDs as of yet.
+ * And what I mean is that I cannot see a way in software to distinguish between a
+ * physical FRU device (e.g., AMC523) that has LEDs and a software FRU device 
+ * (e.g., TELCO ALARM) that does not have LEDs.
+ * 
+ * (1) ipmi_cmd(ipmi, IPMI_BMC_IPMB_LUN_BMC, IPMI_NET_FN_PICMG_RQ, obj_cmd_rq, obj_cmd_rs);
+ * (2) ipmi_ctx_set_target(ipmi, &this->channel_number, &deviceAddr);
+ * 
+*/
+const std::vector<std::string> IpmiFruDevLocRec::picmgLedExclusionList = {
+    "SHELF FRU INFO",
+    "UTCA CARRIER",
+    "SH FRU DEV1",
+    "MCH DA INFO",
+    "BMC FRU",
+    "TELCO ALARM"
+};
+
+bool IpmiFruDevLocRec::isInExclusionList(const std::string &name) {
+    for(auto &exName : picmgLedExclusionList) {
+        if(name == exName) {return true;};
+    }
+    return false;
+}
+
 IpmiFruDevLocRec::IpmiFruDevLocRec(ipmi_ctx_t ipmi, ipmi_sdr_ctx_t sdr, uint16_t recid, uint8_t rectype)
     :IpmiSdrRec(recid, rectype)
 {
@@ -67,14 +102,11 @@ IpmiFruDevLocRec::IpmiFruDevLocRec(ipmi_ctx_t ipmi, ipmi_sdr_ctx_t sdr, uint16_t
     this->device_id_string = id_str;
 
     /** Does this FRU device have LEDs? */
-    uint64_t statusLeds = 0;
-    uint64_t appLeds = 0;
     try
     {
-        /** Lots of things can go wrong and throw errors in this function. For now we are only going
-         * to focus on whether or not it returns a value for the statusLeds.
-        */
-        getPicmgStatusLeds(ipmi);
+        if(! isInExclusionList(this->device_id_string)) {
+            getPicmgStatusLeds(ipmi);
+        }
     }
     catch(const std::exception& e)
     {
@@ -191,14 +223,6 @@ std::string getLedColorsReqRsp(ipmi_ctx_t ipmi, uint8_t _logical_fru_device_devi
     if (fiid_obj_set(obj_cmd_rq, "led_id", _led_id) < 0)
     throw std::runtime_error("failed to initialize PICMG LED request");
 
-
-    /** The device adder is shifted to bit-7 in use for these commands.*/
-    ///uint8_t deviceAddr = (this->device_access_address << 1);
-    
-    ///if (ipmi_ctx_set_target(ipmi, &this->channel_number, &deviceAddr) < 0) {
-        ///throw std::runtime_error("Failed to set target IPMI address - " + std::string(ipmi_ctx_errormsg(ipmi)));
-    ///}
-
     int ret = ipmi_cmd(ipmi, IPMI_BMC_IPMB_LUN_BMC, IPMI_NET_FN_PICMG_RQ, obj_cmd_rq, obj_cmd_rs);
     if (ret < 0)
         throw std::runtime_error("failed to request PICMG LED capabilities");
@@ -242,7 +266,7 @@ void IpmiFruDevLocRec::getPicmgStatusLeds(ipmi_ctx_t ipmi) {
 
     int ret = ipmi_cmd(ipmi, IPMI_BMC_IPMB_LUN_BMC, IPMI_NET_FN_PICMG_RQ, obj_cmd_rq, obj_cmd_rs);
     if (ret < 0) {
-        throw std::runtime_error("ERROR! IPMI command returned a failer code for object command req/rsp: " + 
+        throw std::runtime_error("ERROR! IPMI command returned a failure code for object command req/rsp: " + 
         std::string(ipmi_ctx_errormsg(ipmi)));
     }
     

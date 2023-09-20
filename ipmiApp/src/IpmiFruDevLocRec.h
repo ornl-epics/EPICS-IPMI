@@ -29,6 +29,8 @@ private:
     void IpmiFruDevLocRec::getPicmgStatusLeds(ipmi_ctx_t ipmi);
     std::vector<std::shared_ptr<IpmiSensorRecComp>> sensor_records;
     std::vector<std::shared_ptr<PicmgLed>> m_StatusLeds;
+    static const std::vector<std::string> picmgLedExclusionList;
+    static bool isInExclusionList(const std::string &name);
 
 public:
     IpmiFruDevLocRec(ipmi_ctx_t ipmi, ipmi_sdr_ctx_t sdr, uint16_t recid, uint8_t rectype);
@@ -45,6 +47,7 @@ public:
     std::vector<std::shared_ptr<IpmiSensorRecComp>> &get_sensors();
     std::vector<std::shared_ptr<PicmgLed>> getStatusLeds();
     std::shared_ptr<PicmgLed> getStatusLedById(uint8_t led_id);
+    
 };
 
 #endif

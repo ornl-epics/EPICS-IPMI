@@ -88,10 +88,10 @@ std::shared_ptr<IpmiFruDevLocRec> FreeIpmiProvider::get_fru_by_device_slave_addr
 FreeIpmiProvider::Entity FreeIpmiProvider::getEntityValue(const std::shared_ptr<EntityAddrType> entAddrType) {
 
     if(!entAddrType) {
-        throw std::runtime_error("In method getEntityValue entAddrType parameter is null.");
+        throw std::runtime_error("In method FreeIpmiProvider::getEntityValue(...) EntityAddrType parameter is null.");
     }
 
-    EntityAddrType::Type addressType = entAddrType->getEntityAddressType();
+    const EntityAddrType::Type addressType = entAddrType->getEntityAddressType();
 
     Entity entity;
 
@@ -102,7 +102,8 @@ FreeIpmiProvider::Entity FreeIpmiProvider::getEntityValue(const std::shared_ptr<
         break;
 
     case EntityAddrType::Type::PICMG_LED:
-        entity = getPicmgLedReading(entAddrType);
+        ///TODO: Finish getPicmgLedReading(entAddrType);
+        ///entity = getPicmgLedReading(entAddrType);
         break;
     
     default:
@@ -116,7 +117,7 @@ FreeIpmiProvider::Entity FreeIpmiProvider::getEntityValue(const std::shared_ptr<
 FreeIpmiProvider::Entity FreeIpmiProvider::getPicmgLedReading(const std::shared_ptr<EntityAddrType> entAddrType) {
     
     if(!entAddrType) {
-        throw std::runtime_error("Entity address type object is null in getPicmgLedReading().");
+        throw std::runtime_error("In method FreeIpmiProvider::getPicmgLedReading(...) EntityAddrType parameter is null.");
     }
     /** Find the FRU and Then find the PICMGLED*/
     std::shared_ptr<IpmiFruDevLocRec> fru = nullptr;
@@ -134,8 +135,11 @@ FreeIpmiProvider::Entity FreeIpmiProvider::getPicmgLedReading(const std::shared_
 
 FreeIpmiProvider::Entity FreeIpmiProvider::getSensorReading(const std::shared_ptr<EntityAddrType> entAddrType) {
 
+    if(!entAddrType) {
+        throw std::runtime_error("In method FreeIpmiProvider::getSensorReading(...) EntityAddrType parameter is null.");
+    }
     std::shared_ptr<IpmiSensorRecComp> sp (nullptr);
-    std::string key = entAddrType->getSensorIdAsKey();
+    const std::string key = entAddrType->getSensorIdAsKey();
     sp = findSensorByMapKey(key);
 
     if(!sp) {

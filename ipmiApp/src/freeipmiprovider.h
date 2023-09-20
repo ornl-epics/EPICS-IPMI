@@ -17,6 +17,7 @@
 
 #include <string>
 #include <vector>
+#include <iostream>
 
 #include <freeipmi/freeipmi.h>
 #include "IpmiSensorRecFull.h"
@@ -150,10 +151,12 @@ class FreeIpmiProvider : public Provider
         std::shared_ptr<PicmgLed> getPicmgLedByAddress(uint8_t fru_id, uint8_t led_id);
         ///const IpmiFruDevLocRec &get_fru_by_device_slave_address(const uint8_t slave_address);
         std::shared_ptr<IpmiFruDevLocRec> get_fru_by_device_slave_address(const uint8_t slave_address);
-        ///Entity get_entity_value(const IpmiSensorRecComp &sdrRec) override;
-        Entity get_entity_value(std::shared_ptr<IpmiSensorRecComp> sdrRec) override;
         static Entity read_sensor(ipmi_sdr_ctx_t sdr, ipmi_sensor_read_ctx_t sensors,
             const std::shared_ptr<IpmiSensorRecComp> record);
+        static Entity readPicmgLed(ipmi_ctx_t ipmi, const std::shared_ptr<PicmgLed> picmgLed);
+        Entity getEntityValue(const std::shared_ptr<EntityAddrType> entAddrType) override;
+        Entity getSensorReading(const std::shared_ptr<EntityAddrType> entAddrType);
+        Entity getPicmgLedReading(const std::shared_ptr<EntityAddrType> entAddrType);
         static int compareSdrRecordKeys(ipmi_sdr_ctx_t sdr, const std::shared_ptr<IpmiSensorRecComp> record);
 
         /**
@@ -241,4 +244,5 @@ class FreeIpmiProvider : public Provider
         std::vector<FreeIpmiProvider::Entity> getPicmgLeds(ipmi_ctx_t ipmi, const FruAddress& address, const std::string& namePrefix);
         FreeIpmiProvider::Entity getPicmgLedFull(ipmi_ctx_t ipmi, const PicmgLedAddress& address, const std::string& namePrefix);
         FreeIpmiProvider::Entity getPicmgLed(ipmi_ctx_t ipmi, const PicmgLedAddress& address);
+        
 };

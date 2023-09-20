@@ -13,6 +13,7 @@
 #include <functional>
 #include <provider.h>
 #include <vector>
+#include "EntityAddrType.h"
 
 /**
  * @namespace Dispatcher
@@ -68,7 +69,8 @@ void printDb(const std::string& connection_id, const std::string& path, const st
  * @param address to be checked
  * @throw Throws exception
  */
-void checkLink(const std::string& address);
+///void checkLink(const std::string& address);
+void checkLink(const std::shared_ptr<EntityAddrType> entAddrType);
 
 /**
  * @brief Finds existing IPMI sub-system and schedules asynchronous processing.
@@ -85,6 +87,7 @@ void checkLink(const std::string& address);
 template<typename T>
 bool process(T* rec);
 
-bool scheduleGet(const std::string& address, const std::function<void()>& cb, Provider::Entity& entity);
+///bool scheduleGet(const std::string& address, const std::function<void()>& cb, Provider::Entity& entity);
+bool scheduleGet(const std::shared_ptr<EntityAddrType> entAddrType, const std::function<void()>& cb, Provider::Entity& entity);
 
 }; // namespace

@@ -16,9 +16,12 @@
 #include <string>
 #include <list>
 #include <map>
+#include <memory>
+#include <functional>
 #include <vector>
 #include "IpmiSensorRecComp.h"
 #include "PicmgLed.h"
+#include "EntityAddrType.h"
 
 #if __cplusplus > 201402L
 #include <variant>
@@ -98,12 +101,12 @@ class Provider {
                 }
         };
         struct Task {
-            std::shared_ptr<IpmiSensorRecComp> sdrRec;
+            std::shared_ptr<EntityAddrType> entAddrTyp;
             std::function<void()> callback;
             Entity& entity;
             
-            Task(std::shared_ptr<IpmiSensorRecComp> sdrRec_, const std::function<void()>& cb, Entity& entity_)
-                : sdrRec(sdrRec_)
+            Task(std::shared_ptr<EntityAddrType> entAddrTyp_, const std::function<void()>& cb, Entity& entity_)
+                : entAddrTyp(entAddrTyp_)
                 , callback(cb)
                 , entity(entity_)
             {};
@@ -176,6 +179,6 @@ class Provider {
          * @return current value
          */
         virtual Entity getEntity(const std::string& address) = 0;
-        ///virtual Entity get_entity_value(const IpmiSensorRecComp &sdrRec) = 0;
-        virtual Entity get_entity_value(std::shared_ptr<IpmiSensorRecComp> sdrRec) = 0;
+        virtual Entity getEntityValue(const std::shared_ptr<EntityAddrType> entAddrType) = 0;
+
 };

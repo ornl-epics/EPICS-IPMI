@@ -75,10 +75,12 @@ void Provider::tasksThread()
 
         try {
             
-            Entity ent = get_entity_value(task.sdrRec);
+            ///Entity ent = get_entity_value(task.sdrRec);
+            Entity ent = getEntityValue(task.entAddrTyp);
             for (auto& kv: ent) {
                 task.entity[kv.first] = std::move(kv.second);
             }
+            
 
         } catch (std::runtime_error &e) {
             task.entity["SEVR"] = (int)epicsSevInvalid;

@@ -279,6 +279,138 @@ FreeIpmiProvider::Entity FreeIpmiProvider::getPicmgLedFull(ipmi_ctx_t ipmi, cons
     return entity;
 }
 
+FreeIpmiProvider::Entity FreeIpmiProvider::readPicmgLed(ipmi_ctx_t ipmi, const std::shared_ptr<PicmgLed> picmgLed) {
+    
+    static fiid_template_t tmpl_cmd_get_picmg_led_get_rq =
+    {
+        { 8, "cmd", FIID_FIELD_REQUIRED | FIID_FIELD_LENGTH_FIXED},
+        { 8, "picmg_id", FIID_FIELD_REQUIRED | FIID_FIELD_LENGTH_FIXED},
+        { 8, "fru_device_id", FIID_FIELD_REQUIRED | FIID_FIELD_LENGTH_FIXED},
+        { 8, "led_id", FIID_FIELD_REQUIRED | FIID_FIELD_LENGTH_FIXED},
+        { 0, "", 0}
+    };
+
+    static fiid_template_t tmpl_cmd_get_picmg_led_get_rs =
+    {
+        { 8, "cmd", FIID_FIELD_REQUIRED | FIID_FIELD_LENGTH_FIXED | FIID_FIELD_MAKES_PACKET_SUFFICIENT},
+        { 8, "comp_code", FIID_FIELD_REQUIRED | FIID_FIELD_LENGTH_FIXED | FIID_FIELD_MAKES_PACKET_SUFFICIENT},
+        { 8, "picmg_id", FIID_FIELD_REQUIRED | FIID_FIELD_LENGTH_FIXED},
+        { 1, "state_local_control", FIID_FIELD_REQUIRED | FIID_FIELD_LENGTH_FIXED},
+        { 1, "state_override_control", FIID_FIELD_REQUIRED | FIID_FIELD_LENGTH_FIXED},
+        { 1, "state_lamp_test", FIID_FIELD_REQUIRED | FIID_FIELD_LENGTH_FIXED},
+        { 1, "state_hardware_restrict", FIID_FIELD_REQUIRED | FIID_FIELD_LENGTH_FIXED},
+        { 4, "reserved", FIID_FIELD_REQUIRED | FIID_FIELD_LENGTH_FIXED},
+
+        { 8, "local_control_function", FIID_FIELD_REQUIRED | FIID_FIELD_LENGTH_FIXED},
+        { 8, "local_control_duration", FIID_FIELD_REQUIRED | FIID_FIELD_LENGTH_FIXED},
+        { 4, "local_control_color", FIID_FIELD_REQUIRED | FIID_FIELD_LENGTH_FIXED},
+        { 4, "local_control_reserved", FIID_FIELD_REQUIRED | FIID_FIELD_LENGTH_FIXED},
+        { 8, "override_control_function", FIID_FIELD_REQUIRED | FIID_FIELD_LENGTH_FIXED},
+        { 8, "override_control_duration", FIID_FIELD_REQUIRED | FIID_FIELD_LENGTH_FIXED},
+        { 4, "override_control_color", FIID_FIELD_REQUIRED | FIID_FIELD_LENGTH_FIXED},
+        { 4, "override_control_reserved", FIID_FIELD_REQUIRED | FIID_FIELD_LENGTH_FIXED},
+        { 8, "lamp_test_duration", FIID_FIELD_OPTIONAL | FIID_FIELD_LENGTH_FIXED},
+        { 0, "", 0}
+    };
+
+    /** Create the request object */
+    fiid_obj_t obj_cmd_rq = fiid_obj_create(tmpl_cmd_get_picmg_led_get_rq);
+
+    /** Check if the request object is valid */
+    if(!fiid_obj_valid(obj_cmd_rq))
+        obj_cmd_rq = nullptr;
+
+    /** Create the response object */
+    fiid_obj_t obj_cmd_rs = fiid_obj_create(tmpl_cmd_get_picmg_led_get_rs);
+
+    /** Check if the response object is valid */
+    if(!fiid_obj_valid(obj_cmd_rs))
+        obj_cmd_rs = nullptr;
+
+    if (obj_cmd_rq == nullptr)
+        throw std::runtime_error("Failed to allocate PICMG LED request");
+
+    if (obj_cmd_rs == nullptr)
+        throw std::runtime_error("Failed to allocate PICMG LED response");
+
+    if (fiid_obj_set(obj_cmd_rq, "cmd", PICMG_GET_FRU_LED_STATE_CMD) < 0)
+        throw std::runtime_error("failed to initialize PICMG LED request");
+    if (fiid_obj_set(obj_cmd_rq, "picmg_id", IPMI_NET_FN_GROUP_EXTENSION_IDENTIFICATION_PICMG) < 0)
+        throw std::runtime_error("failed to initialize PICMG LED request");
+    if (fiid_obj_set(obj_cmd_rq, "fru_device_id", picmgLed->getLogicalFruDeviceDeviceSlaveAddress()) < 0)
+        throw std::runtime_error("failed to initialize PICMG LED request");
+    if (fiid_obj_set(obj_cmd_rq, "led_id", picmgLed->getLedId()) < 0)
+        throw std::runtime_error("failed to initialize PICMG LED request");
+
+    /** The device adder is shifted to bit-7 in use for these commands.*/
+    uint8_t deviceAddr = (picmgLed->getDeviceAccessAddress() << 1);
+    uint8_t deviceChannel = picmgLed->getChannelNumber();
+    
+    if (ipmi_ctx_set_target(ipmi, &deviceChannel, &deviceAddr) < 0) {
+        throw std::runtime_error("Failed to set target IPMI address - " + std::string(ipmi_ctx_errormsg(ipmi)));
+    }
+
+    int ret = ipmi_cmd(ipmi, IPMI_BMC_IPMB_LUN_BMC, IPMI_NET_FN_PICMG_RQ, obj_cmd_rq, obj_cmd_rs);
+    if (ret < 0) {
+        throw std::runtime_error("ERROR! IPMI command returned a failer code for object command req/rsp: " + 
+        std::string(ipmi_ctx_errormsg(ipmi)));
+    }
+
+    /** Completion code. 00h is good.*/
+    uint64_t compCode;
+    if (fiid_obj_get(obj_cmd_rs, "comp_code", &compCode) < 0)
+        throw std::runtime_error("Failed to get object \'comp_code\' from response for PICMG LED properties");
+    if (compCode != 0)
+        throw std::runtime_error("ERROR! Unsuccessfull completion code \'" + std::to_string(compCode) + "\' "
+        "returned for get \'comp_code\' command response for PICMG LED properties");
+    
+    int state = 0; // off
+
+    uint64_t val = 0;
+    if (fiid_obj_get(obj_cmd_rs, "state_local_control", &val) < 0)
+        throw std::runtime_error("failed to decode PICMG LED state response");
+    std::cout << "Local Control Val1: " << val << std::endl;
+    if (val) {
+        val = 0;
+        // TODO: val < 255 => off-state blinking
+        if (fiid_obj_get(obj_cmd_rs, "local_control_function", &val) < 0)
+            throw std::runtime_error("failed to decode PICMG LED state response");
+        std::cout << "Local Control Val2: " << val << std::endl;
+        if (val > 0) {
+            val = 0;
+            if (fiid_obj_get(obj_cmd_rs, "local_control_color", &val) < 0)
+                throw std::runtime_error("failed to decode PICMG LED state response");
+            std::cout << "Local Control Val3: " << val << std::endl;
+            state = (val & 0xF);
+        }
+    }
+
+    val = 0;
+    if (fiid_obj_get(obj_cmd_rs, "state_override_control", &val) < 0)
+        throw std::runtime_error("failed to decode PICMG LED state response");
+    std::cout << "Override Control Val1: " << val << std::endl;
+    if (val) {
+        val = 0;
+        // TODO: val < 255 => off-state blinking
+        if (fiid_obj_get(obj_cmd_rs, "override_control_function", &val) < 0)
+            throw std::runtime_error("failed to decode PICMG LED state response");
+        std::cout << "Override Control Val2: " << val << std::endl;
+        if (val > 0) {
+            val = 0;
+            if (fiid_obj_get(obj_cmd_rs, "override_control_color", &val) < 0)
+                throw std::runtime_error("failed to decode PICMG LED state response");
+            std::cout << "Override Control Val1: " << val << std::endl;
+            state = (val & 0xF);
+        }
+    }
+
+    // TODO: lamp test
+    std::cout << "State: " << state << std::endl;
+    Entity entity;
+    entity["VAL"] = state;
+    return entity;
+}
+
 FreeIpmiProvider::Entity FreeIpmiProvider::getPicmgLed(ipmi_ctx_t ipmi, const PicmgLedAddress& address)
 {
     static fiid_template_t tmpl_cmd_get_picmg_led_get_rq =

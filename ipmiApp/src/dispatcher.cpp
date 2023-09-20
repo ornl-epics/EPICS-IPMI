@@ -227,82 +227,77 @@ void printDb(const std::string& conn_id, const std::string& path, const std::str
     fclose(dbfile);
 }
 
-/** Just veriry that the link field is valid and that we can touch the
- *  objects defined.
-*/
-void checkLink(const std::string& address) {
+std::shared_ptr<FreeIpmiProvider> checkEntityAddressType(const std::shared_ptr<EntityAddrType> entAddrType) {
     
-    std::map<std::string, std::string> argMap;
-
-    parse_inout_str(argMap, address);
-
-    /** First find the connection*/
-    auto conn = _getConnection(argMap["cid"]);
-    if(!conn)
-        throw std::invalid_argument("Link field can't find device \'@" + argMap["cid"] + "\'");
-
-    /** TODO: Handle case insensitive */
-    if(argMap["type"] == "PICMG_LED") {
-        std::shared_ptr<PicmgLed> led = nullptr;
-        uint8_t fruId = (std::stoul(argMap["fru_id"]) & 0xFF);
-        uint8_t ledId = (std::stoul(argMap["led_id"]) & 0xFF);
-        led = conn->getPicmgLedByAddress(fruId, ledId);
-        if(led == nullptr) {
-            throw std::runtime_error("Could not find PICMG_LED by FRU-ID \'" + argMap["fru_id"] +
-            "\' and LED-ID \'" + argMap["led_id"] + "\' in record link field.");
-        }
-        return;
+    /** First verify that the Entity Address and Type object is good to go.*/
+    if(!entAddrType) {
+        throw std::runtime_error("EntityAddrType object derrived from record link field is null.");
     }
-    else if(argMap["type"] == "sensor") {
-        std::shared_ptr<IpmiSensorRecComp> sp (nullptr);
-        std::string key = argMap["et"] + ":" + argMap["ei"] + ":";
 
-        /** Find the sensor in the map by the key created: entity-type:entity-instance:sensor-id-string*/
-        if(argMap.find("sid") != argMap.end()) {
-            key += argMap["sid"];
-            sp = conn->findSensorByMapKey(key);
-        }
-        else
-            throw std::runtime_error("Sensor parameter invalid in link field....");
-        
+    /** Second find/verify the connection. */
+    auto conn = _getConnection(entAddrType->getConnectionId());
+    if(!conn)
+        throw std::invalid_argument("Link field can't find device \'@" + entAddrType->getConnectionId() + "\'"); 
+
+    /** What type is the Entity Address? */
+    const EntityAddrType::Type addressType = entAddrType->getEntityAddressType();
+
+    switch (addressType) {
+    case EntityAddrType::Type::SENSOR:
+    {
+        std::shared_ptr<IpmiSensorRecComp> sp (nullptr);
+        const std::string key = entAddrType->getSensorIdAsKey();
+        sp = conn->findSensorByMapKey(key);
         if(!sp) {
             throw std::runtime_error("Could not find sensor in map by key \'" + key + "\'");
         }
-        return;
-    }   
+    }
+        break;
+
+    case EntityAddrType::Type::PICMG_LED:
+    {
+        std::shared_ptr<PicmgLed> led = nullptr;
+        std::pair<uint8_t, bool> fruId = entAddrType->getPicmgLedFruDeviceSlaveSddress();
+        std::pair<uint8_t, bool> ledId = {0,false};
+        if(fruId.second) {
+            ledId = entAddrType->getPicmgLedId();
+            if(ledId.second) {
+                led = conn->getPicmgLedByAddress(fruId.first, ledId.first);
+            }
+        }
+        
+        if(!led) {
+            throw std::runtime_error("Could not find PICMG_LED by FRU-ID \'" + std::to_string(fruId.first) +
+            "\' and LED-ID \'" + std::to_string(ledId.first) + "\' in record link field.");
+        }
+    }
+        break;
+
+    default:
+        throw std::runtime_error("Could not find sensor in map by key \'" + entAddrType->getEntityAddressTypeAsString() + "\'");
+        break;
+    }
+
+    return conn;
 }
 
-bool scheduleGet(const std::string& address, const std::function<void()>& cb, Provider::Entity& entity)
+/** Just veriry that the link field is valid and that we can touch the
+ *  objects defined.
+**/
+///void checkLink(const std::string& address) {
+void checkLink(const std::shared_ptr<EntityAddrType> entAddrType) {
+    
+    /** First verify that the Entity Address and Type object is good to go.*/
+    checkEntityAddressType(entAddrType);
+}
+
+///bool scheduleGet(const std::string& address, const std::function<void()>& cb, Provider::Entity& entity)
+bool scheduleGet(const std::shared_ptr<EntityAddrType> entAddrType, const std::function<void()>& cb, Provider::Entity& entity)
 {
-    std::map<std::string, std::string> argMap;
-
-    ///TODO: Add throw. Strict parsing on number of tokens.
-    parse_inout_str(argMap, address);
+    /** First verify that the Entity Address and Type object is good to go.*/
+    auto conn = checkEntityAddressType(entAddrType);
+    return conn->schedule( Provider::Task(entAddrType, cb, entity) );
     
-    /** First find the connection*/
-    auto conn = _getConnection(argMap["cid"]);
-    if(!conn)
-        return (!!conn);
-
-   /** Second find the FRU*/
-    std::string s;
-    std::shared_ptr<IpmiSensorRecComp> sp (nullptr);
-
-    std::string key = argMap["et"] + ":" + argMap["ei"] + ":";
-
-    /** Find the sensor in the map by the key created: entity-type:entity-instance:sensor-id-string*/
-    if(argMap.find("sid") != argMap.end()) {
-        key += argMap["sid"];
-        sp = conn->findSensorByMapKey(key);
-    }
-    else    /* We should have already thrown at this point*/
-        throw std::runtime_error("Sensor parameter invalid in link field....");
-    
-    if(!sp) {
-        throw std::runtime_error("Could not find sensor in map by key \'" + key + "\'");
-    }
-
-    return conn->schedule( Provider::Task(sp, cb, entity) );
 }
 
 }; // namespace dispatcher

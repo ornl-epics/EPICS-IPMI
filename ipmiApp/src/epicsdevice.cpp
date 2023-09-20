@@ -23,23 +23,28 @@
 
 #include "common.h"
 #include "dispatcher.h"
+#include "EntityAddrType.h"
 #include <sstream>
 #include <iostream>
 
 struct IpmiRecord {
     CALLBACK callback;
     Provider::Entity entity;
+    std::shared_ptr<EntityAddrType> entAddrType;
 };
 
 template<typename T>
 long initInpRecord(T* rec)
 {
+    
+    std::shared_ptr<EntityAddrType> eaddrt = nullptr;
     try {
         /** The connection has already been initialized and the SDR read.
          * So this call will not only verify the connection is correct but
          * it will also verify that the Sensor exist.
         */
-        dispatcher::checkLink(rec->inp.value.instio.string);
+        eaddrt = std::make_shared<EntityAddrType>(rec->inp.value.instio.string);
+        dispatcher::checkLink(eaddrt);
     }
     catch(const std::exception &e) {
         std::cerr << "ERROR: Record \'" << rec->name << "\' " << e.what() << '\n';
@@ -52,12 +57,17 @@ long initInpRecord(T* rec)
     
     void* buffer = callocMustSucceed(1, sizeof(IpmiRecord), "ipmi::initGeneric");
     rec->dpvt = new (buffer) IpmiRecord;
+
+    IpmiRecord *ctx = reinterpret_cast<IpmiRecord*>(rec->dpvt);
+    ctx->entAddrType = eaddrt;
+    
     return 0;
 }
 
 static long processAiRecord(aiRecord* rec)
 {
     IpmiRecord* ctx = reinterpret_cast<IpmiRecord*>(rec->dpvt);
+    
     if (ctx == nullptr) {
         // Keep PACT=1 to prevent further processing
         rec->pact = 1;
@@ -69,7 +79,7 @@ static long processAiRecord(aiRecord* rec)
         rec->pact = 1;
 
         std::function<void()> cb = std::bind(callbackRequestProcessCallback, &ctx->callback, rec->prio, rec);
-        if (dispatcher::scheduleGet(rec->inp.value.instio.string, cb, ctx->entity) == false) {
+        if (dispatcher::scheduleGet(ctx->entAddrType, cb, ctx->entity) == false) {
             // Keep PACT=1 to prevent further processing
             recGblSetSevr(rec, epicsAlarmUDF, epicsSevInvalid);
             return -1;
@@ -99,7 +109,43 @@ static long processAiRecord(aiRecord* rec)
 
 static long processBiRecord(biRecord* rec) {
 
-    return 0;
+IpmiRecord* ctx = reinterpret_cast<IpmiRecord*>(rec->dpvt);
+    
+    if (ctx == nullptr) {
+        // Keep PACT=1 to prevent further processing
+        rec->pact = 1;
+        recGblSetSevr(rec, epicsAlarmUDF, epicsSevInvalid);
+        return -1;
+    }
+
+    if (rec->pact == 0) {
+        rec->pact = 1;
+
+        std::function<void()> cb = std::bind(callbackRequestProcessCallback, &ctx->callback, rec->prio, rec);
+        if (dispatcher::scheduleGet(ctx->entAddrType, cb, ctx->entity) == false) {
+            // Keep PACT=1 to prevent further processing
+            recGblSetSevr(rec, epicsAlarmUDF, epicsSevInvalid);
+            return -1;
+        }
+
+        return 0;
+    }
+
+    // This is the second pass, we got new value now update the record
+    rec->pact = 0;
+
+    rec->val = ctx->entity.getField<int>("VAL", rec->val);
+    /** TODO: Why rval?*/
+    /** rec->rval = rec->val;*/
+
+    auto sevr = ctx->entity.getField<int>("SEVR", epicsSevNone);
+    auto stat = ctx->entity.getField<int>("STAT", epicsAlarmNone);
+    (void)recGblSetSevr(rec, stat, sevr);
+
+    if (rec->desc[0] == 0)
+        common::copy(ctx->entity.getField<std::string>("DESC", ""), rec->desc, sizeof(rec->desc));
+
+    return 2;
 }
 
 static long processStringinRecord(stringinRecord* rec)
@@ -110,11 +156,11 @@ static long processStringinRecord(stringinRecord* rec)
         rec->pact = 1;
 
         std::function<void()> cb = std::bind(callbackRequestProcessCallback, &ctx->callback, rec->prio, rec);
-        if (dispatcher::scheduleGet(rec->inp.value.instio.string, cb, ctx->entity) == false) {
+        ///if (dispatcher::scheduleGet(rec->inp.value.instio.string, cb, ctx->entity) == false) {
             // Keep PACT=1 to prevent further processing
-            recGblSetSevr(rec, epicsAlarmUDF, epicsSevInvalid);
-            return -1;
-        }
+            ///recGblSetSevr(rec, epicsAlarmUDF, epicsSevInvalid);
+            ///return -1;
+        ///}
 
         return 0;
     }
@@ -142,11 +188,11 @@ static long processMbbiRecord(mbbiRecord* rec)
         rec->pact = 1;
 
         std::function<void()> cb = std::bind(callbackRequestProcessCallback, &ctx->callback, rec->prio, rec);
-        if (dispatcher::scheduleGet(rec->inp.value.instio.string, cb, ctx->entity) == false) {
+        ///if (dispatcher::scheduleGet(rec->inp.value.instio.string, cb, ctx->entity) == false) {
             // Keep PACT=1 to prevent further processing
-            recGblSetSevr(rec, epicsAlarmUDF, epicsSevInvalid);
-            return -1;
-        }
+            ///recGblSetSevr(rec, epicsAlarmUDF, epicsSevInvalid);
+            ///return -1;
+        ///}
 
         return 0;
     }

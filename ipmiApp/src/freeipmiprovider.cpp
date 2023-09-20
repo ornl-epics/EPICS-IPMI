@@ -85,27 +85,78 @@ std::shared_ptr<IpmiFruDevLocRec> FreeIpmiProvider::get_fru_by_device_slave_addr
     throw std::invalid_argument(ss.str());
 }
 
-FreeIpmiProvider::Entity FreeIpmiProvider::get_entity_value(std::shared_ptr<IpmiSensorRecComp> sdrRec) {
+FreeIpmiProvider::Entity FreeIpmiProvider::getEntityValue(const std::shared_ptr<EntityAddrType> entAddrType) {
 
+    if(!entAddrType) {
+        throw std::runtime_error("In method getEntityValue entAddrType parameter is null.");
+    }
+
+    EntityAddrType::Type addressType = entAddrType->getEntityAddressType();
+
+    Entity entity;
+
+    switch (addressType) {
+
+    case EntityAddrType::Type::SENSOR:
+        entity = getSensorReading(entAddrType);
+        break;
+
+    case EntityAddrType::Type::PICMG_LED:
+        entity = getPicmgLedReading(entAddrType);
+        break;
+    
+    default:
+        throw std::runtime_error("Invalid Entity address type \'" + entAddrType->getEntityAddressTypeAsString() + "\'");
+        break;
+    }
+
+    return entity;
+}
+
+FreeIpmiProvider::Entity FreeIpmiProvider::getPicmgLedReading(const std::shared_ptr<EntityAddrType> entAddrType) {
+    
+    if(!entAddrType) {
+        throw std::runtime_error("Entity address type object is null in getPicmgLedReading().");
+    }
+    /** Find the FRU and Then find the PICMGLED*/
+    std::shared_ptr<IpmiFruDevLocRec> fru = nullptr;
+    std::shared_ptr<PicmgLed> led = nullptr;
+    fru = get_fru_by_device_slave_address(entAddrType->getPicmgLedFruDeviceSlaveSddress().first);
+    if(!fru) {
+        throw std::runtime_error("Fru object is null in getPicmgLedReading().");
+    }
+    led = fru->getStatusLedById(entAddrType->getPicmgLedId().first);
+    if(!led) {
+        throw std::runtime_error("PICMG_LED object is null in getPicmgLedReading().");
+    }
+    return readPicmgLed(this->m_ctx.ipmi,led);
+}
+
+FreeIpmiProvider::Entity FreeIpmiProvider::getSensorReading(const std::shared_ptr<EntityAddrType> entAddrType) {
+
+    std::shared_ptr<IpmiSensorRecComp> sp (nullptr);
+    std::string key = entAddrType->getSensorIdAsKey();
+    sp = findSensorByMapKey(key);
+
+    if(!sp) {
+        throw std::runtime_error("Could not find sensor in map by key \'" + key + "\'");
+    }
     /** First check to see if this sensor matches the SDR. The SDR can change underneith us.
      * See Section 33.5 "Reading the SDR Repository" of the IPMI Specification.
-    */
-    
-    if(compareSdrRecordKeys(m_ctx.sdr, sdrRec) != 0) {
+     */
+
+    if(compareSdrRecordKeys(m_ctx.sdr, sp) != 0) {
         ///TODO: Dump the current IpmiSensorRecComp objects and reread the SDR
         std::stringstream ss;
-        std::map<std::shared_ptr<IpmiSensorRecComp>, uint16_t>::iterator itr;
-        itr = this->m_SensToFruMap.find(sdrRec);
-
         ss << "Connection-ID: \'" << this->m_ConnectionId << "\', ";
         ss << "Hostname: \'" << this->m_hostname << "\', ";
-        ss << (unsigned) sdrRec->get_entity_id() <<":" << (unsigned) sdrRec->get_entity_instance();
-        ss << " \'" << sdrRec->get_device_id_string() << "\' ";
+        ss << (unsigned) sp->get_entity_id() <<":" << (unsigned) sp->get_entity_instance();
+        ss << " \'" << sp->get_device_id_string() << "\' ";
         ss << "does not match key in SDR." << std::endl;
         throw std::runtime_error(ss.str());
     }
-    Entity entity = read_sensor(m_ctx.sdr, m_ctx.sensors, sdrRec);
-    return entity;
+
+    return read_sensor(m_ctx.sdr, m_ctx.sensors, sp);
 }
 
 void FreeIpmiProvider::initContexts() {

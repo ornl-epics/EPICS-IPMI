@@ -5,7 +5,7 @@ include $(TOP)/configure/CONFIG
 #  ADD MACRO DEFINITIONS AFTER THIS LINE
 #=============================
 
-CXXFLAGS += -g -ggdb -O0 -std=c++11 -fpermissive
+CXXFLAGS += -g -ggdb -O0 -std=c++17 -fpermissive
 
 #=============================
 # Build the IOC application
@@ -47,6 +47,7 @@ epicsipmi_SRCS += freeipmiprovider.cpp
 epicsipmi_SRCS += ipmifru.cpp
 epicsipmi_SRCS += ipmisensor.cpp
 epicsipmi_SRCS += ipmipicmg.cpp
+epicsipmi_SRCS += EntityAddrType.cpp
 
 # ipmi_registerRecordDeviceDriver.cpp derives from ipmi.dbd
 ##ipmi_SRCS += ipmi_registerRecordDeviceDriver.cpp

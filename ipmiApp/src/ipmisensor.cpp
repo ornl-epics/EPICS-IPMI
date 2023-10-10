@@ -109,11 +109,12 @@ FreeIpmiProvider::Entity FreeIpmiProvider::read_sensor(ipmi_sdr_ctx_t sdr, ipmi_
             " * Entity-Id: \'" + std::to_string(record->get_entity_id()) + "\'\n"
             " * Entity-Instance: \'" + std::to_string(record->get_entity_instance()) + "\'\n"
             " * Sensor-Id-String: \'" + record->get_device_id_string() + "\'\n"
+            " * Return Value: \'" + std::to_string(rv) + "\'\n"
             "}\n"
             "Error Code: \'" + std::to_string(err_num) + "\' Error String: " + getErrStr());
     }
 
-    /** Only threshold type sensors return a reading-value. The reset of the sensors types
+    /** Only threshold type sensors return a reading-value. The rest of the sensor types
      *  return the event-bit-mask only as the sensor reading-value; which represents an
      *  enumerated state. See section 42 in the IPMI specification.
      *  Note: Threshold sensors return two values: 1) the sensor-reading, 2) the even-mask.

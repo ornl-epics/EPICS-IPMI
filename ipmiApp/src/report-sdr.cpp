@@ -40,7 +40,7 @@ const char *password = NULL;
 
 ipmi_ctx_t ipmi{nullptr};
 
-const std::string sdr_cache_path = "/tmp/ipmi_sdr_xxx.cache";
+const std::string sdr_cache_path = "/tmp/epics_report_sdr.cache";
 bool create_report_file = false;
 std::string report_file_name;
 bool create_epics_db_file = false;
@@ -326,12 +326,14 @@ void write_db_file() {
     std::vector<std::shared_ptr<EpRecord>> eprList;
 
     for(auto &obj : fruDevLocRecList) {
-
+        /** TODO: Finish PICMG_LED support
+         * 
         for(auto &led : obj.get()->getStatusLeds()) {
             std::shared_ptr<EpRecord> epr = EpRecord::create(obj->get_device_slave_address(), led);
             eprList.push_back(epr);
             dbfile << epr->to_string() << std::endl;
         }
+        */
         
         for(auto &sensor : obj->get_sensors()) {
             std::shared_ptr<EpRecord> epr = EpRecord::create(obj->get_device_slave_address(), sensor);

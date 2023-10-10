@@ -108,108 +108,15 @@ static long processAiRecord(aiRecord* rec)
 }
 
 static long processBiRecord(biRecord* rec) {
-
-IpmiRecord* ctx = reinterpret_cast<IpmiRecord*>(rec->dpvt);
-    
-    if (ctx == nullptr) {
-        // Keep PACT=1 to prevent further processing
-        rec->pact = 1;
-        recGblSetSevr(rec, epicsAlarmUDF, epicsSevInvalid);
-        return -1;
-    }
-
-    if (rec->pact == 0) {
-        rec->pact = 1;
-
-        std::function<void()> cb = std::bind(callbackRequestProcessCallback, &ctx->callback, rec->prio, rec);
-        if (dispatcher::scheduleGet(ctx->entAddrType, cb, ctx->entity) == false) {
-            // Keep PACT=1 to prevent further processing
-            recGblSetSevr(rec, epicsAlarmUDF, epicsSevInvalid);
-            return -1;
-        }
-
-        return 0;
-    }
-
-    // This is the second pass, we got new value now update the record
-    rec->pact = 0;
-
-    rec->val = ctx->entity.getField<int>("VAL", rec->val);
-    /** TODO: Why rval?*/
-    /** rec->rval = rec->val;*/
-
-    auto sevr = ctx->entity.getField<int>("SEVR", epicsSevNone);
-    auto stat = ctx->entity.getField<int>("STAT", epicsAlarmNone);
-    (void)recGblSetSevr(rec, stat, sevr);
-
-    if (rec->desc[0] == 0)
-        common::copy(ctx->entity.getField<std::string>("DESC", ""), rec->desc, sizeof(rec->desc));
-
-    return 2;
+    return -1;
 }
 
-static long processStringinRecord(stringinRecord* rec)
-{
-    IpmiRecord* ctx = reinterpret_cast<IpmiRecord*>(rec->dpvt);
-
-    if (rec->pact == 0) {
-        rec->pact = 1;
-
-        std::function<void()> cb = std::bind(callbackRequestProcessCallback, &ctx->callback, rec->prio, rec);
-        ///if (dispatcher::scheduleGet(rec->inp.value.instio.string, cb, ctx->entity) == false) {
-            // Keep PACT=1 to prevent further processing
-            ///recGblSetSevr(rec, epicsAlarmUDF, epicsSevInvalid);
-            ///return -1;
-        ///}
-
-        return 0;
-    }
-
-    // This is the second pass, we got new value now update the record
-    rec->pact = 0;
-
-    common::copy(ctx->entity.getField<std::string>("VAL", rec->val), rec->val, sizeof(rec->val));
-
-    auto sevr = ctx->entity.getField<int>("SEVR", epicsSevNone);
-    auto stat = ctx->entity.getField<int>("STAT", epicsAlarmNone);
-    (void)recGblSetSevr(rec, stat, sevr);
-
-    if (rec->desc[0] == 0)
-        common::copy(ctx->entity.getField<std::string>("DESC", ""), rec->desc, sizeof(rec->desc));
-
-    return 0;
+static long processStringinRecord(stringinRecord* rec) {
+    return -1;
 }
 
-static long processMbbiRecord(mbbiRecord* rec)
-{
-    IpmiRecord* ctx = reinterpret_cast<IpmiRecord*>(rec->dpvt);
-
-    if (rec->pact == 0) {
-        rec->pact = 1;
-
-        std::function<void()> cb = std::bind(callbackRequestProcessCallback, &ctx->callback, rec->prio, rec);
-        ///if (dispatcher::scheduleGet(rec->inp.value.instio.string, cb, ctx->entity) == false) {
-            // Keep PACT=1 to prevent further processing
-            ///recGblSetSevr(rec, epicsAlarmUDF, epicsSevInvalid);
-            ///return -1;
-        ///}
-
-        return 0;
-    }
-
-    // This is the second pass, we got new value now update the record
-    rec->pact = 0;
-
-    rec->rval  = ctx->entity.getField<int>("VAL", 0);
-
-    auto sevr = ctx->entity.getField<int>("SEVR", epicsSevNone);
-    auto stat = ctx->entity.getField<int>("STAT", epicsAlarmNone);
-    (void)recGblSetSevr(rec, stat, sevr);
-
-    if (rec->desc[0] == 0)
-        common::copy(ctx->entity.getField<std::string>("DESC", ""), rec->desc, sizeof(rec->desc));
-
-    return 0;
+static long processMbbiRecord(mbbiRecord* rec) {
+    return -1;
 }
 
 extern "C" {

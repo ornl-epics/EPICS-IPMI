@@ -76,7 +76,7 @@ int FreeIpmiProvider::compareSdrRecordKeys(ipmi_sdr_ctx_t sdr, const std::shared
 
 FreeIpmiProvider::Entity FreeIpmiProvider::read_sensor(ipmi_sdr_ctx_t sdr, ipmi_sensor_read_ctx_t sensors,
     const std::shared_ptr<IpmiSensorRecComp> record) {
-
+    
     Entity entity;
     uint8_t sharedOffset = 0; // TODO: shared sensors support
     uint8_t readingRaw = 0;
@@ -105,13 +105,8 @@ FreeIpmiProvider::Entity FreeIpmiProvider::read_sensor(ipmi_sdr_ctx_t sdr, ipmi_
         };
 
         throw std::runtime_error (
-            "Error: Could not read sensor for {\n"
-            " * Entity-Id: \'" + std::to_string(record->get_entity_id()) + "\'\n"
-            " * Entity-Instance: \'" + std::to_string(record->get_entity_instance()) + "\'\n"
-            " * Sensor-Id-String: \'" + record->get_device_id_string() + "\'\n"
-            " * Return Value: \'" + std::to_string(rv) + "\'\n"
-            "}\n"
-            "Error Code: \'" + std::to_string(err_num) + "\' Error String: " + getErrStr());
+            "Return Value: \'" + std::to_string(rv) + "\', " + "Error Code: \'" + std::to_string(err_num) + "\', Error String: " + getErrStr()
+            );
     }
 
     /** Only threshold type sensors return a reading-value. The rest of the sensor types

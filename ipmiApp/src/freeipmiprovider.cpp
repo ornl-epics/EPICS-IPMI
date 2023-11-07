@@ -160,7 +160,27 @@ FreeIpmiProvider::Entity FreeIpmiProvider::getSensorReading(const std::shared_pt
         throw std::runtime_error(ss.str());
     }
 
-    return read_sensor(m_ctx.sdr, m_ctx.sensors, sp);
+    try
+    {
+        Entity entity = read_sensor(m_ctx.sdr, m_ctx.sensors, sp);
+        return entity;
+    }
+    catch(const std::runtime_error &e)
+    {
+        std::stringstream ss;
+        ss << "Could not read sensor for {\n";
+        ss << " * Connection-ID: \'" << this->m_ConnectionId << "\'\n";
+        ss << " * Hostname: \'" << this->m_hostname << "\'\n";
+        ss << " * Entity-Id: \'" << std::to_string(sp->get_entity_id()) << "\'\n";
+        ss << " * Entity-Instance: \'" << std::to_string(sp->get_entity_instance()) << "\'\n";
+        ss << " * Sensor-Id-String: \'" << sp->get_device_id_string() << "\'\n";
+        ss << " * Reason: " << e.what() << "\n";
+        ss << "}\n\n";
+        throw std::runtime_error(ss.str());
+    }
+    
+
+    ///return read_sensor(m_ctx.sdr, m_ctx.sensors, sp);
 }
 
 void FreeIpmiProvider::initContexts() {

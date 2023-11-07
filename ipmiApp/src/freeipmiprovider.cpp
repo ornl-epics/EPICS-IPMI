@@ -134,7 +134,11 @@ FreeIpmiProvider::Entity FreeIpmiProvider::getPicmgLedReading(const std::shared_
 }
 
 FreeIpmiProvider::Entity FreeIpmiProvider::getSensorReading(const std::shared_ptr<EntityAddrType> entAddrType) {
-
+    
+    if(!this->m_connected) {
+        this->connect();
+    }
+    
     if(!entAddrType) {
         throw std::runtime_error("In method FreeIpmiProvider::getSensorReading(...) EntityAddrType parameter is null.");
     }
@@ -162,7 +166,10 @@ FreeIpmiProvider::Entity FreeIpmiProvider::getSensorReading(const std::shared_pt
 
     try
     {
+        
         Entity entity = read_sensor(m_ctx.sdr, m_ctx.sensors, sp);
+        ipmi_ctx_close(m_ctx.ipmi);
+        this->m_connected = false;
         return entity;
     }
     catch(const std::runtime_error &e)
@@ -267,8 +274,8 @@ void FreeIpmiProvider::connect()
     if (connected < 0)
         throw std::runtime_error("can't connect - " + std::string(ipmi_ctx_errormsg(m_ctx.ipmi)));
 
-    std::cout << "Connected successfully to \'" << this->m_ConnectionId << "\' at \'"
-    << this->m_hostname << "\'" << std::endl;
+    ///std::cout << "Connected successfully to \'" << this->m_ConnectionId << "\' at \'"
+    ///<< this->m_hostname << "\'" << std::endl;
     m_connected = true;
 }
 

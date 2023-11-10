@@ -58,7 +58,7 @@ int FreeIpmiProvider::compareSdrRecordKeys(ipmi_sdr_ctx_t sdr, const std::shared
     uint8_t _sensor_owner_id_type = 0;
     uint8_t _sensor_owner_id = 0;
     rv = ipmi_sdr_parse_sensor_owner_id (sdr, NULL, 0, &_sensor_owner_id_type, &_sensor_owner_id);
-
+    
     uint8_t _sensor_owner_lun = 0;
     uint8_t _channel_number = 0;
     rv = ipmi_sdr_parse_sensor_owner_lun (sdr, NULL, 0, &_sensor_owner_lun, &_channel_number);

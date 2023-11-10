@@ -66,6 +66,7 @@ long initInpRecord(T* rec)
 
 static long processAiRecord(aiRecord* rec)
 {
+    
     IpmiRecord* ctx = reinterpret_cast<IpmiRecord*>(rec->dpvt);
     
     if (ctx == nullptr) {

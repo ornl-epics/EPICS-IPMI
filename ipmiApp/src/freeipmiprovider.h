@@ -193,6 +193,7 @@ class FreeIpmiProvider : public Provider
          * @return true on success
          */
         void connect();
+        void disconnect();
 
         /**
          * @brief Opens or creates SDR cache, needs file on disk.

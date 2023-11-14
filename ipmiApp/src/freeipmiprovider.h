@@ -43,6 +43,7 @@ class FreeIpmiProvider : public Provider
 
         std::map<std::shared_ptr<IpmiSensorRecComp>, uint16_t> m_SensToFruMap;
 
+        bool m_sdrCacheIsOpen{false};
         uint8_t m_SdrVersion;
         uint32_t m_SdrAdditionTimestamp;
         uint32_t m_SdrEraseTimestamp;
@@ -179,7 +180,7 @@ class FreeIpmiProvider : public Provider
 
     private:
 
-        void initContexts();
+        void process() override;
         void destroyContexts();
         void initIpmiContext();
         void initSdrContext();

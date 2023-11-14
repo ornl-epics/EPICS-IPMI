@@ -50,21 +50,25 @@ FreeIpmiProvider::Entity FreeIpmiProvider::getSensor(ipmi_sdr_ctx_t sdr, ipmi_se
 int FreeIpmiProvider::compareSdrRecordKeys(ipmi_sdr_ctx_t sdr, const std::shared_ptr<IpmiSensorRecComp> record) {
 
     /** Find the record in the SDR that we 'think' our record is pointing at.*/
-    int rv = ipmi_sdr_cache_search_record_id (sdr, record->get_record_id());
+    if(ipmi_sdr_cache_search_record_id (sdr, record->get_record_id()) < 0)
+        return -1;
 
     /** Get the record-key from the SDR record and see if it matches the key of our record.
      * FYI See Section 33.5 "Reading the SDR Repository" of the IPMI Specification about record-keys
     */
     uint8_t _sensor_owner_id_type = 0;
     uint8_t _sensor_owner_id = 0;
-    rv = ipmi_sdr_parse_sensor_owner_id (sdr, NULL, 0, &_sensor_owner_id_type, &_sensor_owner_id);
+    if(ipmi_sdr_parse_sensor_owner_id (sdr, NULL, 0, &_sensor_owner_id_type, &_sensor_owner_id) < 0)
+        return -1;
     
     uint8_t _sensor_owner_lun = 0;
     uint8_t _channel_number = 0;
-    rv = ipmi_sdr_parse_sensor_owner_lun (sdr, NULL, 0, &_sensor_owner_lun, &_channel_number);
+    if(ipmi_sdr_parse_sensor_owner_lun (sdr, NULL, 0, &_sensor_owner_lun, &_channel_number) < 0)
+        return -1;
 
     uint8_t _sensor_number = 0;
-    rv = ipmi_sdr_parse_sensor_number (sdr, NULL, 0, &_sensor_number);
+    if(ipmi_sdr_parse_sensor_number (sdr, NULL, 0, &_sensor_number) < 0)
+        return -1;
     
     if(record->get_sensor_owner_id() == _sensor_owner_id)
         if(record->get_sensor_owner_lun() == _sensor_owner_lun)

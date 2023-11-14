@@ -48,8 +48,9 @@ FreeIpmiProvider::FreeIpmiProvider(const std::string& conn_id, const std::string
     m_sdrCachePath = "/tmp/ipmi_sdr_" + conn_id + ".cache";
 
     // TODO: automatic connection management
-    initContexts();
-    openSdrCache();
+
+    /** Connect to the device and read the SDR contents and then disconnect.*/
+    connect();
     readSdrCache();
     disconnect();
     
@@ -73,6 +74,10 @@ FreeIpmiProvider::~FreeIpmiProvider()
     if (m_ctx.fru) {
         ipmi_fru_ctx_destroy(m_ctx.fru);
     }
+}
+
+void FreeIpmiProvider::process() {
+    std::cout << "Do something..." << std::endl;
 }
 
 std::shared_ptr<IpmiFruDevLocRec> FreeIpmiProvider::get_fru_by_device_slave_address(const uint8_t slave_address) {
@@ -137,8 +142,15 @@ FreeIpmiProvider::Entity FreeIpmiProvider::getPicmgLedReading(const std::shared_
 FreeIpmiProvider::Entity FreeIpmiProvider::getSensorReading(const std::shared_ptr<EntityAddrType> entAddrType) {
 
     if(!m_connected) {
-        initContexts();
+        connect();
+    }
+
+    if(!m_sdrCacheIsOpen) {
         openSdrCache();
+    }
+
+    if(!m_ctx.sensors) {
+        initSensorsContext();
     }
     
     if(!entAddrType) {
@@ -190,43 +202,52 @@ FreeIpmiProvider::Entity FreeIpmiProvider::getSensorReading(const std::shared_pt
     ///return read_sensor(m_ctx.sdr, m_ctx.sensors, sp);
 }
 
-void FreeIpmiProvider::initContexts() {
-    destroyContexts();
-    initIpmiContext();
-    connect();
-    initSdrContext();
-    /** Sensor context will fail if connection hasn't been opened yet.*/
-    initSensorsContext();
-}
-
 void FreeIpmiProvider::destroyContexts() {
 
-    if (m_ctx.sensors)
-        ipmi_sensor_read_ctx_destroy(m_ctx.sensors);
+    m_connected = false;
+    m_sdrCacheIsOpen = false;
 
-    if (m_ctx.fru)
+    if (m_ctx.sensors) {
+        ipmi_sensor_read_ctx_destroy(m_ctx.sensors);
+        m_ctx.sensors = nullptr;
+    }
+
+    if (m_ctx.fru) {
         ipmi_fru_ctx_destroy(m_ctx.fru);
+        m_ctx.fru = nullptr;
+    }
 
     if (m_ctx.sdr) {
         ipmi_sdr_ctx_destroy(m_ctx.sdr);
+        m_ctx.sdr = nullptr;
     }
 
     if (m_ctx.ipmi) {
         ipmi_ctx_close(m_ctx.ipmi);
         ipmi_ctx_destroy(m_ctx.ipmi);
+        m_ctx.ipmi = nullptr;
     }
 
 }
 
 void FreeIpmiProvider::initIpmiContext() {
 
+    destroyContexts();
+
     m_ctx.ipmi = ipmi_ctx_create();
 
     if (!m_ctx.ipmi)
         throw std::runtime_error("can't create IPMI context");
+
 }
 
 void FreeIpmiProvider::initSdrContext() {
+
+    m_sdrCacheIsOpen = false;
+
+    if (m_ctx.sdr) {
+        ipmi_sdr_ctx_destroy(m_ctx.sdr);
+    }
 
     m_ctx.sdr = ipmi_sdr_ctx_create();
 
@@ -254,6 +275,10 @@ void FreeIpmiProvider::initFruContext() {
 
 void FreeIpmiProvider::connect()
 {
+    if(!m_ctx.ipmi) {
+        initIpmiContext();
+    }
+
     const char* username_ = (m_username.empty() ? nullptr : m_username.c_str());
     const char* password_ = (m_password.empty() ? nullptr : m_password.c_str());
 
@@ -281,15 +306,15 @@ void FreeIpmiProvider::connect()
 
 void FreeIpmiProvider::disconnect()
 {
-    if (m_ctx.ipmi) {
-        ipmi_ctx_close(m_ctx.ipmi);
-        ipmi_ctx_destroy(m_ctx.ipmi);
-    }
-    m_connected = false;
+    destroyContexts();
 }
 
 void FreeIpmiProvider::openSdrCache()
 {
+    if(!m_ctx.sdr) {
+       initSdrContext(); 
+    }
+
     if (ipmi_sdr_cache_open(m_ctx.sdr, m_ctx.ipmi, m_sdrCachePath.c_str()) < 0) {
         switch (ipmi_sdr_ctx_errnum(m_ctx.sdr)) {
         case IPMI_SDR_ERR_CACHE_OUT_OF_DATE:
@@ -309,9 +334,15 @@ void FreeIpmiProvider::openSdrCache()
             throw std::runtime_error("can't open SDR cache - " + std::string(ipmi_ctx_errormsg(m_ctx.ipmi)));
     }
 
+    m_sdrCacheIsOpen = true;
+
 }
 
 void FreeIpmiProvider::readSdrCache() {
+
+    if(!m_ctx.sdr || !m_sdrCacheIsOpen) {
+        openSdrCache();
+    }
 
     /* Get the SDR version. */
     if(ipmi_sdr_cache_sdr_version (m_ctx.sdr, &this->m_SdrVersion) < 0)

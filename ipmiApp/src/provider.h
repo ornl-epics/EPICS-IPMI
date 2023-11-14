@@ -180,6 +180,6 @@ class Provider {
          */
         virtual Entity getEntity(const std::string& address) = 0;
         virtual Entity getEntityValue(const std::shared_ptr<EntityAddrType> entAddrType) = 0;
-        virtual void process() = 0;
+        
 
 };

@@ -13,6 +13,7 @@
 #include <alarm.h> // from EPICS
 #include <cmath>
 #include "IpmiSensorRecComp.h"
+#include "IpmiException.h"
 #include <iostream>
 
 FreeIpmiProvider::Entity FreeIpmiProvider::getSensor(ipmi_sdr_ctx_t sdr, ipmi_sensor_read_ctx_t sensors, const SensorAddress& address)
@@ -107,10 +108,8 @@ FreeIpmiProvider::Entity FreeIpmiProvider::read_sensor(ipmi_sdr_ctx_t sdr, ipmi_
             else
                 return "\'" + str_error + "\'";
         };
-
-        throw std::runtime_error (
-            "Return Value: \'" + std::to_string(rv) + "\', " + "Error Code: \'" + std::to_string(err_num) + "\', Error String: " + getErrStr()
-            );
+        
+        throw IpmiException(err_num, std::move(getErrStr()));
     }
 
     /** Only threshold type sensors return a reading-value. The rest of the sensor types

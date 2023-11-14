@@ -11,6 +11,7 @@
 #include "freeipmiprovider.h"
 #include <iostream>
 #include <sstream>
+#include "IpmiException.h"
 
 FreeIpmiProvider::FreeIpmiProvider(const std::string& conn_id, const std::string& hostname,
                                    const std::string& username, const std::string& password,
@@ -74,10 +75,6 @@ FreeIpmiProvider::~FreeIpmiProvider()
     if (m_ctx.fru) {
         ipmi_fru_ctx_destroy(m_ctx.fru);
     }
-}
-
-void FreeIpmiProvider::process() {
-    std::cout << "Do something..." << std::endl;
 }
 
 std::shared_ptr<IpmiFruDevLocRec> FreeIpmiProvider::get_fru_by_device_slave_address(const uint8_t slave_address) {
@@ -183,6 +180,30 @@ FreeIpmiProvider::Entity FreeIpmiProvider::getSensorReading(const std::shared_pt
         
         Entity entity = read_sensor(m_ctx.sdr, m_ctx.sensors, sp);
         return entity;
+    }
+    catch(const IpmiException &e) {
+        /** this is indicative of a session timeout/device disconnected.
+         *  The actual error message returned from IPMI will be 'internal IPMI error'
+         *  which isn't very descriptive. But if you dig deeper you find 'session timeout'.
+         * But sometimes you get read errors that are okay and so you do not want to
+         * disconnect. e.g., device busy errors can be returned.
+        */
+        if(e.getErrorCode() == 16) {
+
+            this->disconnect();
+
+            std::stringstream ss;
+            ss << "Could not read sensor for {\n";
+            ss << " * Connection-ID: \'" << this->m_ConnectionId << "\'\n";
+            ss << " * Hostname: \'" << this->m_hostname << "\'\n";
+            ss << " * Entity-Id: \'" << std::to_string(sp->get_entity_id()) << "\'\n";
+            ss << " * Entity-Instance: \'" << std::to_string(sp->get_entity_instance()) << "\'\n";
+            ss << " * Sensor-Id-String: \'" << sp->get_device_id_string() << "\'\n";
+            ss << " * Reason: \'Session Timeout\'" << "\n";
+            ss << " * Error Code: \'" << e.getErrorCode() << "\', Error Message: \'" << e.getErrorString() << "\'\n";
+            ss << "}\n\n";
+            throw std::runtime_error(ss.str());
+        }
     }
     catch(const std::runtime_error &e)
     {

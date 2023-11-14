@@ -180,7 +180,6 @@ class FreeIpmiProvider : public Provider
 
     private:
 
-        void process() override;
         void destroyContexts();
         void initIpmiContext();
         void initSdrContext();

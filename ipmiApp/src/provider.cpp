@@ -79,6 +79,12 @@ void Provider::tasksThread()
             for (auto& kv: ent) {
                 task.entity[kv.first] = std::move(kv.second);
             }
+            /** We have to set these back to normal if we had
+             * set them below in the catch... otherwise they
+             * stay in alarm.
+            */
+            task.entity["SEVR"] = (int)epicsSevNone;
+            task.entity["STAT"] = (int)epicsAlarmNone;
             
 
         } catch (std::runtime_error &e) {

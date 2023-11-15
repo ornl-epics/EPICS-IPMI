@@ -177,16 +177,17 @@ FreeIpmiProvider::Entity FreeIpmiProvider::getSensorReading(const std::shared_pt
 
     try
     {
-        
         Entity entity = read_sensor(m_ctx.sdr, m_ctx.sensors, sp);
         return entity;
     }
     catch(const IpmiException &e) {
-        /** this is indicative of a session timeout/device disconnected.
-         *  The actual error message returned from IPMI will be 'internal IPMI error'
-         *  which isn't very descriptive. But if you dig deeper you find 'session timeout'.
+        /**
+         * Trap possible session-timeouts and handle reconnections. 
+         * This is indicative of a session timeout/device disconnected.
+         * The actual error code/message returned from IPMI will be 16/'internal IPMI error'
+         * which isn't very descriptive. But if you dig deeper you find 'session timeout'.
          * But sometimes you get read errors that are okay and so you do not want to
-         * disconnect. e.g., device busy errors can be returned.
+         * disconnect. e.g., Error Code: '5', Error String: 'sensor reading unavailable'
         */
         if(e.getErrorCode() == 16) {
 
@@ -317,10 +318,16 @@ void FreeIpmiProvider::connect()
                         m_sessionTimeout, m_retransmissionTimeout, m_workaroundFlags, m_flags);
 
     }
-    if (connected < 0)
-        throw std::runtime_error("can't connect - " + std::string(ipmi_ctx_errormsg(m_ctx.ipmi)));
+    
+    if (connected < 0) {
+        std::stringstream ss;
+        ss << "Can't Connect to \'" << this->m_ConnectionId << "\' @ \'" << this->m_hostname << "\' ";
+        ss << "because of \'" << std::string(ipmi_ctx_errormsg(m_ctx.ipmi)) << "\'\n";
+        disconnect();
+        throw std::runtime_error(ss.str());
+    }
 
-    std::cout << "Connected successfully to \'" << this->m_ConnectionId << "\' at \'"
+    std::cout << "Connected successfully to \'" << this->m_ConnectionId << "\' @ \'"
     << this->m_hostname << "\'" << std::endl;
     m_connected = true;
 }

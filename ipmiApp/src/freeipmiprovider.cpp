@@ -50,7 +50,16 @@ FreeIpmiProvider::FreeIpmiProvider(const std::string& conn_id, const std::string
 
     // TODO: automatic connection management
 
-    /** Connect to the device and read the SDR contents and then disconnect.*/
+    /** 
+     * Connect to the device and read the SDR contents and then disconnect.
+     * We disconnect here because there is a session timeout that defaults
+     * to 20 seconds. And if we have 30+ devices the whole boot process,
+     * including record init takes some time, longer than 20 seconds, and
+     * the device will have a session timeout. So we disconnect here, after
+     * we read the SDR and then re-connect again after the boot cycle completes
+     * and we begin our first read request.
+     * 
+    */
     connect();
     readSdrCache();
     disconnect();

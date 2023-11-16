@@ -160,7 +160,6 @@ class Provider {
          * @param address FreeIPMI implementation specific address
          * @return current value
          */
-        virtual Entity getEntity(const std::string& address) = 0;
         virtual Entity getEntityValue(const std::shared_ptr<EntityAddrType> entAddrType) = 0;
         
 

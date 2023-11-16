@@ -100,11 +100,6 @@ static long processAiRecord(aiRecord* rec)
     auto stat = ctx->entity.getField<int>("STAT", epicsAlarmNone);
     (void)recGblSetSevr(rec, stat, sevr);
 
-    if (rec->egu[0] == 0)
-        common::copy(ctx->entity.getField<std::string>("EGU", ""), rec->egu, sizeof(rec->egu));
-    if (rec->desc[0] == 0)
-        common::copy(ctx->entity.getField<std::string>("DESC", ""), rec->desc, sizeof(rec->desc));
-
     return 2;
 }
 

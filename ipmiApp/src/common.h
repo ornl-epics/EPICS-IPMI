@@ -28,8 +28,6 @@ namespace common {
 
 void epicsipmi_log(unsigned severity, const std::string& fmt, ...);
 
-std::vector<std::string> split(const std::string& text, char delimiter=' ', unsigned maxSplits=0);
-
 template <template <class...> class Container, class Type, class ... Allocator>
 std::string merge(const Container<Type, std::allocator<std::string>>& container, const std::string& delimiter=" ")
 {
@@ -47,10 +45,6 @@ bool contains(const Container<Type,Allocator>& container, const typename Contain
     }
     return false;
 };
-
-void copy(const std::string& str, char* buf, size_t bufSize);
-
-std::string to_upper(const std::string& s);
 
 template <typename T, size_t S=0>
 struct buffer {
@@ -73,10 +67,5 @@ struct buffer {
 };
 
 typedef epicsGuard<epicsMutex> ScopedLock;
-
-/**
- * @brief Return local timezone number of seconds from UTC time
- */
-int getUtcOffset();
 
 }

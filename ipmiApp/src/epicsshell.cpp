@@ -76,91 +76,12 @@ extern "C" void ipmiConnectCallFunc(const iocshArgBuf* args) {
     dispatcher::connect(conn_id, hostname, username, password, authType, protocol, privLevel);
 }
 
-// ipmiScan(conn_id, [types])
-static const iocshArg ipmiScanArg0 = { "connection id",     iocshArgString };
-static const iocshArg ipmiScanArg1 = { "type",              iocshArgString };
-static const iocshArg ipmiScanArg2 = { "type",              iocshArgString };
-static const iocshArg ipmiScanArg3 = { "type",              iocshArgString };
-static const iocshArg ipmiScanArg4 = { "type",              iocshArgString };
-static const iocshArg ipmiScanArg5 = { "type",              iocshArgString };
-static const iocshArg* ipmiScanArgs[] = {
-    &ipmiScanArg0,
-    &ipmiScanArg1,
-    &ipmiScanArg2,
-    &ipmiScanArg3,
-    &ipmiScanArg4,
-    &ipmiScanArg5,
-};
-static const iocshFuncDef ipmiScanFuncDef = { "ipmiScan", 6, ipmiScanArgs };
-
-extern "C" void ipmiScanCallFunc(const iocshArgBuf* args) {
-    if (!args[0].sval) {
-        printf("Usage: ipmiScan <conn id> [types]\n");
-        return;
-    }
-
-    std::map<std::string, dispatcher::EntityType> validTypes = {
-        { "sensor",         dispatcher::EntityType::SENSOR },
-        { "fru",            dispatcher::EntityType::FRU },
-        { "picmg_led",      dispatcher::EntityType::PICMG_LED },
-    };
-
-    std::vector<dispatcher::EntityType> types;
-    if (!args[1].sval) {
-        for (auto& it: validTypes) {
-            types.push_back(it.second);
-        }
-    } else {
-        // Check user selection
-        for (int i = 1; i <= 5; i++) {
-            if (args[i].sval) {
-                bool found = false;
-                for (auto& it: validTypes) {
-                    if (it.first == args[i].sval) {
-                        types.push_back(it.second);
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found)
-                    printf("ERROR: Unknown entity type '%s'", args[i].sval);
-            }
-        }
-        if (types.empty())
-            return;
-    }
-
-    dispatcher::scan(args[0].sval, types);
-}
-
-// ipmiDumpDb(conn_id, db_file)
-static const iocshArg ipmiDumpDbArg0 = { "connection id",     iocshArgString };
-static const iocshArg ipmiDumpDbArg1 = { "output file",       iocshArgString };
-static const iocshArg ipmiDumpDbArg2 = { "PV prefix",         iocshArgString };
-static const iocshArg* ipmiDumpDbArgs[] = {
-    &ipmiDumpDbArg0,
-    &ipmiDumpDbArg1,
-    &ipmiDumpDbArg2,
-};
-static const iocshFuncDef ipmiDumpDbFuncDef = { "ipmiDumpDb", 3, ipmiDumpDbArgs };
-
-extern "C" void ipmiDumpDbCallFunc(const iocshArgBuf* args) {
-    if (!args[0].sval || !args[1].sval) {
-        printf("Usage: ipmiDumpDb <conn id> <output file> [PV prefix]\n");
-        return;
-    }
-
-    dispatcher::printDb(args[0].sval, args[1].sval, args[2].sval ? args[2].sval : "");
-}
-
 static void epicsipmiRegistrar ()
 {
     static bool initialized  = false;
     if (!initialized) {
         initialized = false;
         iocshRegister(&ipmiConnectFuncDef, ipmiConnectCallFunc);
-        iocshRegister(&ipmiScanFuncDef,    ipmiScanCallFunc);
-        iocshRegister(&ipmiDumpDbFuncDef,  ipmiDumpDbCallFunc);
     }
 }
 

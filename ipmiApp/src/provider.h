@@ -127,24 +127,6 @@ class Provider {
         ~Provider();
 
         /**
-         * @brief Scan for all sensors in the connected IPMI device.
-         * @return A list of sensors
-         */
-        virtual std::vector<Entity> getSensors() = 0;
-
-        /**
-         * @brief Scans for all FRUs in the connected IPMI device.
-         * @return A list of FRUs
-         */
-        virtual std::vector<Entity> getFrus() = 0;
-
-        /**
-         * @brief Scans for all PICMG LEDs in the connected IPMI device.
-         * @return A list of LEDs
-         */
-        virtual std::vector<Entity> getPicmgLeds() = 0;
-
-        /**
          * @brief Schedules retrieving IPMI value and calling cb function when done.
          * @param address IPMI entity address
          * @param cb function to be called upon (un)succesfull completion

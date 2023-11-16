@@ -49,20 +49,6 @@ bool connect(const std::string& connection_id, const std::string& hostname,
              const std::string& authtype, const std::string& protocol,
              const std::string& privlevel);
 
-/**
- * @brief Scans for IPMI entity types and prints them to console.
- * @param connection_id
- * @param types valid options are 'sensors', 'fru'
- */
-void scan(const std::string& connection_id, const std::vector<EntityType>& types);
-
-/**
- * @brief Scans for IPMI entity types and prints corresponding EPICS records to file.
- * @param connection_id
- * @param filename Full path to filename to be saved
- * @param pv_prefix Prefix to be prepended to record names
- */
-void printDb(const std::string& connection_id, const std::string& path, const std::string& pv_prefix);
 
 /**
  * @brief Verify that record link is indeed valid IPMI address

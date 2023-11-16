@@ -44,7 +44,6 @@ epicsipmi_SRCS += print.cpp
 epicsipmi_SRCS += dispatcher.cpp
 epicsipmi_SRCS += provider.cpp
 epicsipmi_SRCS += freeipmiprovider.cpp
-epicsipmi_SRCS += ipmifru.cpp
 epicsipmi_SRCS += ipmisensor.cpp
 epicsipmi_SRCS += ipmipicmg.cpp
 epicsipmi_SRCS += EntityAddrType.cpp

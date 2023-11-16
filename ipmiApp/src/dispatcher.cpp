@@ -88,22 +88,6 @@ static void parse_inout_str(std::map<std::string, std::string> &argMap, const st
     }
 }
 
-static std::pair<std::string, std::string> _parseLink(const std::string& link)
-{
-    auto tokens = common::split(link, ' ', 2);
-    if (tokens.size() < 3 || tokens[0] != "ipmi")
-        return std::make_pair(std::string(""), std::string(""));
-
-    std::cout << "link: " << link << std::endl;
-    std::cout << "t0: " << tokens[0] << ", t1: " << tokens[1] << ", t2: " << tokens[2] << std::endl;
-    return std::make_pair(tokens[1], tokens[2]);
-}
-
-static std::string _createLink(const std::string& conn_id, const std::string& addr)
-{
-    return "@ipmi " + conn_id + " " + addr;
-}
-
 static std::shared_ptr<FreeIpmiProvider> _getConnection(const std::string& conn_id)
 {
     common::ScopedLock lock(g_mutex);
@@ -139,92 +123,6 @@ bool connect(const std::string& conn_id, const std::string& hostname,
 
     g_connections[conn_id] = conn;
     return true;
-}
-
-void scan(const std::string& conn_id, const std::vector<EntityType>& types)
-{
-    g_mutex.lock();
-    auto it = g_connections.find(conn_id);
-    bool found = (it != g_connections.end());
-    g_mutex.unlock();
-
-    if (!found) {
-        LOG_ERROR("no such connection " + conn_id);
-        return;
-    }
-
-    auto conn = it->second;
-    for (auto& type: types) {
-        try {
-            std::vector<Provider::Entity> entities;
-            std::string header;
-            if (type == EntityType::SENSOR) {
-                entities = conn->getSensors();
-                header = "Sensors:";
-            } else if (type == EntityType::FRU) {
-                entities = conn->getFrus();
-                header = "FRUs:";
-            } else if (type == EntityType::PICMG_LED) {
-                entities = conn->getPicmgLeds();
-                header = "PICMG LEDs:";
-            }
-            print::printScanReport(header, entities);
-        } catch (std::runtime_error& e) {
-            LOG_ERROR(e.what());
-        }
-    }
-}
-
-void printDb(const std::string& conn_id, const std::string& path, const std::string& pv_prefix)
-{
-    g_mutex.lock();
-    auto it = g_connections.find(conn_id);
-    bool found = (it != g_connections.end());
-    g_mutex.unlock();
-
-    if (!found) {
-        LOG_ERROR("no such connection " + conn_id);
-        return;
-    }
-    auto conn = it->second;
-
-    FILE *dbfile = fopen(path.c_str(), "w+");
-    if (dbfile == nullptr)
-        LOG_ERROR("Failed to open output database file - %s", strerror(errno));
-
-    try {
-        auto sensors = conn->getSensors();
-        for (auto& sensor: sensors) {
-            auto inp = sensor.getField<std::string>("INP", "");
-            if (!inp.empty()) {
-                sensor["INP"] = _createLink(conn_id, inp);
-                print::printRecord(dbfile, pv_prefix, sensor);
-            }
-        }
-
-        auto frus = conn->getFrus();
-        for (auto& fru: frus) {
-            auto inp = fru.getField<std::string>("INP", "");
-            if (!inp.empty()) {
-                fru["INP"] = _createLink(conn_id, inp);
-                print::printRecord(dbfile, pv_prefix, fru);
-            }
-        }
-
-        auto leds = conn->getPicmgLeds();
-        for (auto& led: leds) {
-            auto inp = led.getField<std::string>("INP", "");
-            if (!inp.empty()) {
-                led["INP"] = _createLink(conn_id, inp);
-                print::printRecord(dbfile, pv_prefix, led);
-            }
-        }
-
-    } catch (...) {
-        // TODO: do we need to log
-    }
-
-    fclose(dbfile);
 }
 
 std::shared_ptr<FreeIpmiProvider> checkEntityAddressType(const std::shared_ptr<EntityAddrType> entAddrType) {

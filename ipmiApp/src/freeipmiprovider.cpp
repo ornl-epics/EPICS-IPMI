@@ -530,14 +530,6 @@ std::shared_ptr<PicmgLed> FreeIpmiProvider::getPicmgLedByAddress(uint8_t fru_id,
     return nullptr;
 }
 
-std::vector<FreeIpmiProvider::Entity> FreeIpmiProvider::getSensors()
-{
-    common::ScopedLock lock(m_apiMutex);
-    if (!m_connected)
-        connect();
-    return getSensors(m_ctx.sdr, m_ctx.sensors);
-}
-
 FreeIpmiProvider::Entity FreeIpmiProvider::getEntity(const std::string& address)
 {
     common::ScopedLock lock(m_apiMutex);
@@ -567,22 +559,6 @@ FreeIpmiProvider::Entity FreeIpmiProvider::getEntity(const std::string& address)
     } else {
         throw Provider::syntax_error("Invalid address '" + address + "'");
     }
-}
-
-std::vector<FreeIpmiProvider::Entity> FreeIpmiProvider::getFrus()
-{
-    common::ScopedLock lock(m_apiMutex);
-    if (!m_connected)
-        connect();
-    return getFrus(m_ctx.ipmi, m_ctx.sdr, m_ctx.fru);
-}
-
-std::vector<FreeIpmiProvider::Entity> FreeIpmiProvider::getPicmgLeds()
-{
-    common::ScopedLock lock(m_apiMutex);
-    if (!m_connected)
-        connect();
-    return getPicmgLeds(m_ctx.ipmi, m_ctx.sdr);
 }
 
 FreeIpmiProvider::IpmbBridgeScoped::IpmbBridgeScoped(ipmi_ctx_t ipmi_, uint8_t slaveAddress, uint8_t channel)

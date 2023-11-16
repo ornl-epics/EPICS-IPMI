@@ -150,7 +150,6 @@ class FreeIpmiProvider : public Provider
 
         std::shared_ptr<IpmiSensorRecComp> findSensorByMapKey(std::string key);
         std::shared_ptr<PicmgLed> getPicmgLedByAddress(uint8_t fru_id, uint8_t led_id);
-        ///const IpmiFruDevLocRec &get_fru_by_device_slave_address(const uint8_t slave_address);
         std::shared_ptr<IpmiFruDevLocRec> get_fru_by_device_slave_address(const uint8_t slave_address);
         static Entity read_sensor(ipmi_sdr_ctx_t sdr, ipmi_sensor_read_ctx_t sensors,
             const std::shared_ptr<IpmiSensorRecComp> record);
@@ -159,24 +158,6 @@ class FreeIpmiProvider : public Provider
         Entity getSensorReading(const std::shared_ptr<EntityAddrType> entAddrType);
         Entity getPicmgLedReading(const std::shared_ptr<EntityAddrType> entAddrType);
         static int compareSdrRecordKeys(ipmi_sdr_ctx_t sdr, const std::shared_ptr<IpmiSensorRecComp> record);
-
-        /**
-         * @brief Scans for all sensors in the connected IPMI device.
-         * @return A list of sensors
-         */
-        std::vector<Entity> getSensors() override;
-
-        /**
-         * @brief Scans for all FRUs in the connected IPMI device.
-         * @return A list of FRUs
-         */
-        std::vector<Entity> getFrus() override;
-
-        /**
-         * @brief Scans for all PICMG LEDs in the connected IPMI device.
-         * @return A list of LEDs
-         */
-        std::vector<Entity> getPicmgLeds() override;
 
     private:
 
@@ -214,7 +195,7 @@ class FreeIpmiProvider : public Provider
 
         static Entity getSensor(ipmi_sdr_ctx_t sdr, ipmi_sensor_read_ctx_t sensors, const SensorAddress& address);
         static Entity getSensor(ipmi_sdr_ctx_t sdr, ipmi_sensor_read_ctx_t sensors, const SdrRecord& record);
-        static std::vector<Entity> getSensors(ipmi_sdr_ctx_t sdr, ipmi_sensor_read_ctx_t sensors);
+        ///static std::vector<Entity> getSensors(ipmi_sdr_ctx_t sdr, ipmi_sensor_read_ctx_t sensors);
         static std::string getSensorName(ipmi_sdr_ctx_t sdr, const SdrRecord& record);
         static std::string getSensorDesc(ipmi_sdr_ctx_t sdr, const SdrRecord& record);
         static std::string getSensorUnits(ipmi_sdr_ctx_t sdr, const SdrRecord& record);

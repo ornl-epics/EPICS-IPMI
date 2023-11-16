@@ -263,59 +263,6 @@ FreeIpmiProvider::Entity FreeIpmiProvider::getSensor(ipmi_sdr_ctx_t sdr, ipmi_se
     return entity;
 }
 
-std::vector<FreeIpmiProvider::Entity> FreeIpmiProvider::getSensors(ipmi_sdr_ctx_t sdr, ipmi_sensor_read_ctx_t sensors)
-{
-    std::vector<Entity> v;
-
-    auto frus = getFruEntityNameAssoc(sdr);
-
-    if (ipmi_sdr_cache_first(sdr) < 0)
-        throw std::runtime_error("failed to rewind SDR cache - " + std::string(ipmi_sdr_ctx_errormsg(sdr)));
-
-    do {
-        uint8_t recordType;
-        if (ipmi_sdr_parse_record_id_and_type(sdr, NULL, 0, NULL, &recordType) < 0) {
-            LOG_WARN("Failed to parse SDR record type - %s, skipping", ipmi_sdr_ctx_errormsg(sdr));
-            continue;
-        }
-
-        if (recordType != IPMI_SDR_FORMAT_FULL_SENSOR_RECORD && recordType != IPMI_SDR_FORMAT_COMPACT_SENSOR_RECORD)
-            continue;
-
-        SdrRecord record;
-        record.size = ipmi_sdr_cache_record_read(sdr, record.data, IPMI_SDR_MAX_RECORD_LENGTH);
-        if (record.size < 0) {
-            LOG_DEBUG("Failed to read SDR record - %s, skipping", ipmi_sdr_ctx_errormsg(sdr));
-            continue;
-        }
-
-        // Need entity id for FRU association
-        uint8_t entityId;
-        uint8_t entityInstance;
-        if (ipmi_sdr_parse_entity_id_instance_type(sdr, record.data, record.size, &entityId, &entityInstance, NULL) < 0) {
-            LOG_DEBUG("Failed to read SDR entity info - %s, skipping", ipmi_sdr_ctx_errormsg(sdr));
-            continue;
-        }
-
-        Entity sensor;
-        try {
-            sensor = getSensor(sdr, sensors, record);
-        } catch (std::runtime_error e) {
-            LOG_DEBUG(std::string(e.what()) + ", skipping");
-            continue;
-        }
-
-        // Check if we can assign sensor to a device
-        auto it = frus.find(std::make_pair(entityId, entityInstance));
-        if (it != frus.end())
-            sensor["NAME"] = it->second + ":" + sensor.getField<std::string>("NAME", "");
-
-        v.emplace_back(std::move(sensor));
-    } while (ipmi_sdr_cache_next(sdr) == 1);
-
-    return v;
-}
-
 std::string FreeIpmiProvider::getSensorName(ipmi_sdr_ctx_t sdr, const SdrRecord& record)
 {
     uint8_t sensorNum;

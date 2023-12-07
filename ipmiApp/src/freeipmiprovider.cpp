@@ -416,10 +416,6 @@ void FreeIpmiProvider::readSdrCache() {
         this->m_SidEntityMap.clear();
     }
 
-    if(this->m_SnEntityMap.size() > 0) {
-        this->m_SnEntityMap.clear();
-    }
-
     if(this->m_SensToFruMap.size() > 0) {
         this->m_SensToFruMap.clear();
     }
@@ -533,15 +529,6 @@ void FreeIpmiProvider::insertIntoEntityMap(std::shared_ptr<IpmiSensorRecComp> p)
     std::pair<std::map<std::string, std::shared_ptr<IpmiSensorRecComp>>::iterator,bool> rv;
 
     /** Create the key */
-    std::string snKey = std::to_string(p->get_entity_id()) + ":" + 
-    std::to_string(p->get_entity_instance()) + ":" + std::to_string(p->get_sensor_number());
-
-    rv = this->m_SnEntityMap.insert({snKey, p});
-    if(rv.second == false) {
-        throw std::runtime_error("ERROR! Could not insert record into map. Duplicate Keys Exists: " + snKey);
-    }
-
-    /** Create the key */
     std::string sidKey = std::to_string(p->get_entity_id()) + ":" + 
     std::to_string(p->get_entity_instance()) + ":" + p->get_device_id_string();
 
@@ -555,17 +542,8 @@ std::shared_ptr<IpmiSensorRecComp> FreeIpmiProvider::findSensorByMapKey(std::str
 
     std::map<std::string, std::shared_ptr<IpmiSensorRecComp>>::iterator itr;
 
-    ///for(auto &x : m_SidEntityMap) {
-        ///std::cout << "sid: " << x.first << std::endl;
-    ///}
-
     itr = this->m_SidEntityMap.find(key);
     if(itr != this->m_SidEntityMap.end()) {
-        return itr->second;
-    }
-
-    itr = this->m_SnEntityMap.find(key);
-    if(itr != this->m_SnEntityMap.end()) {
         return itr->second;
     }
 

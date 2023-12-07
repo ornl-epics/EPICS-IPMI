@@ -39,7 +39,6 @@ class FreeIpmiProvider : public Provider
         std::vector<std::shared_ptr<IpmiSensorRecComp>> orphandList;
 
         std::map<std::string, std::shared_ptr<IpmiSensorRecComp>> m_SidEntityMap;
-        std::map<std::string, std::shared_ptr<IpmiSensorRecComp>> m_SnEntityMap;
 
         std::map<std::shared_ptr<IpmiSensorRecComp>, uint16_t> m_SensToFruMap;
 

@@ -79,7 +79,7 @@ FreeIpmiProvider::Entity FreeIpmiProvider::read_sensor(ipmi_sdr_ctx_t sdr, ipmi_
         
         throw IpmiException(err_num, std::move(getErrStr()));
     }
-
+    
     /** Only threshold type sensors return a reading-value. The rest of the sensor types
      *  return the event-bit-mask only as the sensor reading-value; which represents an
      *  enumerated state. See section 42 in the IPMI specification.

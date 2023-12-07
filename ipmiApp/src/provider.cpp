@@ -8,8 +8,8 @@
  * @date Feb 2019
  */
 
-#include <common.h>
-#include <provider.h>
+#include "common.h"
+#include "provider.h"
 
 #include <alarm.h>
 #include <epicsThread.h>
@@ -76,6 +76,7 @@ void Provider::tasksThread()
         try {
             
             Entity ent = getEntityValue(task.entAddrTyp);
+
             for (auto& kv: ent) {
                 task.entity[kv.first] = std::move(kv.second);
             }

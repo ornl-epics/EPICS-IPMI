@@ -153,6 +153,7 @@ FreeIpmiProvider::Entity FreeIpmiProvider::getSensorReading(const std::shared_pt
 
     if(!m_sdrCacheIsOpen) {
         openSdrCache();
+        readSdrCache();
     }
 
     if(!m_ctx.sensors) {
@@ -175,6 +176,7 @@ FreeIpmiProvider::Entity FreeIpmiProvider::getSensorReading(const std::shared_pt
 
     if(compareSdrRecordKeys(m_ctx.sdr, sp) != 0) {
         ///TODO: Dump the current IpmiSensorRecComp objects and reread the SDR
+        disconnect();
         std::stringstream ss;
         ss << "Connection-ID: \'" << this->m_ConnectionId << "\', ";
         ss << "Hostname: \'" << this->m_hostname << "\', ";
@@ -186,8 +188,7 @@ FreeIpmiProvider::Entity FreeIpmiProvider::getSensorReading(const std::shared_pt
 
     try
     {
-        Entity entity = read_sensor(m_ctx.sdr, m_ctx.sensors, sp);
-        return entity;
+        return read_sensor(m_ctx.sdr, m_ctx.sensors, sp);
     }
     catch(const IpmiException &e) {
         /**
@@ -210,6 +211,20 @@ FreeIpmiProvider::Entity FreeIpmiProvider::getSensorReading(const std::shared_pt
             ss << " * Entity-Instance: \'" << std::to_string(sp->get_entity_instance()) << "\'\n";
             ss << " * Sensor-Id-String: \'" << sp->get_device_id_string() << "\'\n";
             ss << " * Reason: \'Session Timeout\'" << "\n";
+            ss << " * Error Code: \'" << e.getErrorCode() << "\', Error Message: \'" << e.getErrorString() << "\'\n";
+            ss << "}\n\n";
+            throw std::runtime_error(ss.str());
+        }
+        else {
+            this->disconnect();
+            std::stringstream ss;
+            ss << "Could not read sensor for {\n";
+            ss << " * Connection-ID: \'" << this->m_ConnectionId << "\'\n";
+            ss << " * Hostname: \'" << this->m_hostname << "\'\n";
+            ss << " * Entity-Id: \'" << std::to_string(sp->get_entity_id()) << "\'\n";
+            ss << " * Entity-Instance: \'" << std::to_string(sp->get_entity_instance()) << "\'\n";
+            ss << " * Sensor-Id-String: \'" << sp->get_device_id_string() << "\'\n";
+            ss << " * Reason: \'" << e.getErrorString() << "\'\n";
             ss << " * Error Code: \'" << e.getErrorCode() << "\', Error Message: \'" << e.getErrorString() << "\'\n";
             ss << "}\n\n";
             throw std::runtime_error(ss.str());
@@ -379,6 +394,34 @@ void FreeIpmiProvider::readSdrCache() {
 
     if(!m_ctx.sdr || !m_sdrCacheIsOpen) {
         openSdrCache();
+    }
+
+    if(this->sensRecFullList.size() > 0) {
+        this->sensRecFullList.clear();
+    }
+
+    if(this->sensRecCompactList.size() > 0) {
+        this->sensRecCompactList.clear();
+    }
+
+    if(this->fruDevLocRecList.size() > 0) {
+        this->fruDevLocRecList.clear();
+    }
+
+    if(this->orphandList.size() > 0) {
+        this->orphandList.clear();
+    }
+
+    if(this->m_SidEntityMap.size() > 0) {
+        this->m_SidEntityMap.clear();
+    }
+
+    if(this->m_SnEntityMap.size() > 0) {
+        this->m_SnEntityMap.clear();
+    }
+
+    if(this->m_SensToFruMap.size() > 0) {
+        this->m_SensToFruMap.clear();
     }
 
     /* Get the SDR version. */

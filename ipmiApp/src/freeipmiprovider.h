@@ -108,6 +108,7 @@ class FreeIpmiProvider : public Provider
 
         void destroyContexts();
         void initIpmiContext();
+        void destroySdrCache();
         void initSdrContext();
         void initSensorsContext();
         void initFruContext();

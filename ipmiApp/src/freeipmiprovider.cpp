@@ -175,7 +175,8 @@ FreeIpmiProvider::Entity FreeIpmiProvider::getSensorReading(const std::shared_pt
      */
 
     if(compareSdrRecordKeys(m_ctx.sdr, sp) != 0) {
-        ///TODO: Dump the current IpmiSensorRecComp objects and reread the SDR
+        ///TODO: Dump the current IpmiSensorRecComp objects and reread the SDR agian
+        /// and build new maps
         disconnect();
         std::stringstream ss;
         ss << "Connection-ID: \'" << this->m_ConnectionId << "\', ";
@@ -244,8 +245,6 @@ FreeIpmiProvider::Entity FreeIpmiProvider::getSensorReading(const std::shared_pt
         throw std::runtime_error(ss.str());
     }
     
-
-    ///return read_sensor(m_ctx.sdr, m_ctx.sensors, sp);
 }
 
 void FreeIpmiProvider::destroyContexts() {
@@ -278,12 +277,52 @@ void FreeIpmiProvider::destroyContexts() {
 
 void FreeIpmiProvider::initIpmiContext() {
 
-    destroyContexts();
+    if (m_ctx.ipmi) {
+        ipmi_ctx_close(m_ctx.ipmi);
+        ipmi_ctx_destroy(m_ctx.ipmi);
+        m_ctx.ipmi = nullptr;
+    }
 
     m_ctx.ipmi = ipmi_ctx_create();
 
-    if (!m_ctx.ipmi)
-        throw std::runtime_error("can't create IPMI context");
+    if (!m_ctx.ipmi) {
+        m_connected = false;
+        std::stringstream ss;
+        ss << "Can't create IPMI context for \'" << this->m_ConnectionId << "\' @ \'" << this->m_hostname << "\'\n";
+        throw std::runtime_error(ss.str());
+    }
+}
+
+void FreeIpmiProvider::destroySdrCache() {
+    m_sdrCacheIsOpen = false;
+
+    if (m_ctx.sdr) {
+        ipmi_sdr_ctx_destroy(m_ctx.sdr);
+    }
+
+    if(this->sensRecFullList.size() > 0) {
+        this->sensRecFullList.clear();
+    }
+
+    if(this->sensRecCompactList.size() > 0) {
+        this->sensRecCompactList.clear();
+    }
+
+    if(this->fruDevLocRecList.size() > 0) {
+        this->fruDevLocRecList.clear();
+    }
+
+    if(this->orphandList.size() > 0) {
+        this->orphandList.clear();
+    }
+
+    if(this->m_SidEntityMap.size() > 0) {
+        this->m_SidEntityMap.clear();
+    }
+
+    if(this->m_SensToFruMap.size() > 0) {
+        this->m_SensToFruMap.clear();
+    }
 
 }
 
@@ -297,14 +336,20 @@ void FreeIpmiProvider::initSdrContext() {
 
     m_ctx.sdr = ipmi_sdr_ctx_create();
 
-    if (!m_ctx.sdr)
-        throw std::runtime_error("can't create IPMI SDR context");
+    if (!m_ctx.sdr) {
+        std::stringstream ss;
+        ss << "Can't create SDR context for \'" << this->m_ConnectionId << "\' @ \'" << this->m_hostname << "\'\n";
+        throw std::runtime_error(ss.str());
+    }
 }
 
 void FreeIpmiProvider::initSensorsContext() {
     m_ctx.sensors = ipmi_sensor_read_ctx_create(m_ctx.ipmi);
-    if (!m_ctx.sensors)
-        throw std::runtime_error("can't create IPMI sensor context");
+    if (!m_ctx.sensors) {
+        std::stringstream ss;
+        ss << "Can't create IPMI-Sensor-Read context for \'" << this->m_ConnectionId << "\' @ \'" << this->m_hostname << "\'\n";
+        throw std::runtime_error(ss.str());
+    }
     
     int sensorReadFlags = 0;
     sensorReadFlags |= IPMI_SENSOR_READ_FLAGS_BRIDGE_SENSORS;
@@ -394,30 +439,6 @@ void FreeIpmiProvider::readSdrCache() {
 
     if(!m_ctx.sdr || !m_sdrCacheIsOpen) {
         openSdrCache();
-    }
-
-    if(this->sensRecFullList.size() > 0) {
-        this->sensRecFullList.clear();
-    }
-
-    if(this->sensRecCompactList.size() > 0) {
-        this->sensRecCompactList.clear();
-    }
-
-    if(this->fruDevLocRecList.size() > 0) {
-        this->fruDevLocRecList.clear();
-    }
-
-    if(this->orphandList.size() > 0) {
-        this->orphandList.clear();
-    }
-
-    if(this->m_SidEntityMap.size() > 0) {
-        this->m_SidEntityMap.clear();
-    }
-
-    if(this->m_SensToFruMap.size() > 0) {
-        this->m_SensToFruMap.clear();
     }
 
     /* Get the SDR version. */

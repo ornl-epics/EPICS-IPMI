@@ -153,6 +153,9 @@ FreeIpmiProvider::Entity FreeIpmiProvider::getSensorReading(const std::shared_pt
 
     if(!m_sdrCacheIsOpen) {
         openSdrCache();
+    }
+
+    if(!m_sdrCacheRead) {
         readSdrCache();
     }
 
@@ -177,7 +180,7 @@ FreeIpmiProvider::Entity FreeIpmiProvider::getSensorReading(const std::shared_pt
     if(compareSdrRecordKeys(m_ctx.sdr, sp) != 0) {
         ///TODO: Dump the current IpmiSensorRecComp objects and reread the SDR agian
         /// and build new maps
-        disconnect();
+        destroySdrCache();
         std::stringstream ss;
         ss << "Connection-ID: \'" << this->m_ConnectionId << "\', ";
         ss << "Hostname: \'" << this->m_hostname << "\', ";
@@ -295,6 +298,7 @@ void FreeIpmiProvider::initIpmiContext() {
 
 void FreeIpmiProvider::destroySdrCache() {
     m_sdrCacheIsOpen = false;
+    m_sdrCacheRead = false;
 
     if (m_ctx.sdr) {
         ipmi_sdr_ctx_destroy(m_ctx.sdr);
@@ -491,7 +495,7 @@ void FreeIpmiProvider::readSdrCache() {
             this->m_SensToFruMap.insert({sensr, fdlr.get()->get_device_slave_address()});
         }
     }
-
+    this->m_sdrCacheRead = true;
 }
 
 void FreeIpmiProvider::insertRecord(ipmi_sdr_ctx_t sdr, uint16_t record_id, uint8_t record_type) {

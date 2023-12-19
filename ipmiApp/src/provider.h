@@ -92,7 +92,11 @@ class Provider {
          */
         bool stopThread(double timeout=0.0);
 
+        void start();
+
     private:
+
+        const std::string mConnId;
         struct {
             bool processing{true};
             std::list<Task> queue;

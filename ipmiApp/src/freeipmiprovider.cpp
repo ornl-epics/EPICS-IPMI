@@ -37,7 +37,7 @@ FreeIpmiProvider::FreeIpmiProvider(const std::string& conn_id, const std::string
 
     ///TODO: Check that the info is there before we print it.
     std::cout << mSdrManager->getHeaderAsString() << std::endl;
-    
+    start();
 }
 
 FreeIpmiProvider::~FreeIpmiProvider()

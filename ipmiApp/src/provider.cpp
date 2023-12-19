@@ -25,8 +25,9 @@ extern "C" {
 };
 
 Provider::Provider(const std::string& conn_id)
+: mConnId(conn_id)
 {
-    epicsThreadCreate(conn_id.c_str(), epicsThreadPriorityLow, epicsThreadStackMedium, (EPICSTHREADFUNC)&providerThread, this);
+    
 }
 
 Provider::~Provider()
@@ -46,6 +47,12 @@ bool Provider::stopThread(double timeout)
         m_tasks.stopped.wait();
     }
     return true;
+}
+
+void Provider::start() {
+
+    epicsThreadCreate(mConnId.c_str(), epicsThreadPriorityLow,
+        epicsThreadStackMedium, (EPICSTHREADFUNC)&providerThread, this);
 }
 
 bool Provider::schedule(const Task&& task)

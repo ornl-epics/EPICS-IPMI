@@ -28,44 +28,9 @@
 class FreeIpmiProvider : public Provider
 {
     private:
-        struct {
-            ipmi_ctx_t ipmi{nullptr};
-            ipmi_sdr_ctx_t sdr{nullptr};
-            ipmi_sensor_read_ctx_t sensors{nullptr};
-            ipmi_fru_ctx_t fru{nullptr};
-        } m_ctx;
 
         IpmiConnectionManager *mConnManager{nullptr};
         IpmiSdrManager *mSdrManager{nullptr};
-
-        bool m_sdrCacheIsOpen{false};
-        bool m_sdrCacheRead{false};
-        uint8_t m_SdrVersion;
-        uint32_t m_SdrAdditionTimestamp;
-        uint32_t m_SdrEraseTimestamp;
-        uint16_t m_SdrRecordCount;
-
-        int m_sessionTimeout{IPMI_SESSION_TIMEOUT_DEFAULT};
-        int m_retransmissionTimeout{IPMI_RETRANSMISSION_TIMEOUT_DEFAULT};
-        int m_cipherSuiteId{3};
-        int m_k_g_len{0};
-        unsigned char* m_k_g{nullptr};
-        int m_workaroundFlags{1};
-        int m_flags{IPMI_FLAGS_DEFAULT};
-        std::string m_ConnectionId;
-        std::string m_hostname;
-        std::string m_username;
-        std::string m_password;
-        int m_authType;
-        int m_privLevel;
-        std::string m_protocol;
-        std::string m_sdrCachePath;
-        epicsMutex m_apiMutex;          //!< Serializes all external interfaces
-        bool m_connected{false};
-        epicsTime m_nextReconnect;
-
-        typedef common::buffer<uint8_t, IPMI_SDR_MAX_RECORD_LENGTH> SdrRecord;
-        typedef common::buffer<uint8_t, IPMI_FRU_AREA_SIZE_MAX+1> FruArea;
 
     public:
 

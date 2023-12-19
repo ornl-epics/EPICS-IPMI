@@ -16,6 +16,11 @@
 #ifndef IPMIAPP_SRC_CONNECTIONMANAGER_H_
 #define IPMIAPP_SRC_CONNECTIONMANAGER_H_
 
+enum class ConnectionState {
+    DISCONNECTED,
+    CONNECTED
+};
+
 class IpmiConnectionManager
 {
 private:
@@ -45,18 +50,22 @@ private:
     epicsTime mIdleTime;
     fiid_obj_t mSdrRepositoryInfoRq{nullptr};
     fiid_obj_t mSdrRepositoryInfoRs{nullptr};
+    ConnectionState mConnState{ConnectionState::DISCONNECTED};
 
     void createIpmiContext();
     void createSdrContext();
     void createSensorContext();
     void openSdrCache();
     void connect();
+    void disconnect();
     void cleanup();
     void keepAlive();
     IpmiSdrInfo readSdrInfo();
     
     uint8_t initAuthtype(const std::string &authenticationtype, const std::string &username);
     uint8_t initPrivLevel(const std::string &privlegelevel);
+
+    Provider::Entity readSensor(const std::shared_ptr<IpmiSensorRecComp> record);
     
 public:
     IpmiConnectionManager(const std::string &connectionid, const std::string &hostname,
@@ -71,9 +80,12 @@ public:
     const std::string &getHostname() const;
     void process();
 
-    Provider::Entity readSensor(const std::shared_ptr<IpmiSensorRecComp> record);
+    Provider::Entity getSensorReading(const std::shared_ptr<IpmiSensorRecComp> record);
+    
     IpmiSdrInfo getSdrInfo();
     void rebuildSdrCache();
+
+    
     
 };
 

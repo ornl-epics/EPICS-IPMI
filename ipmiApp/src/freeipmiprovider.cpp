@@ -18,12 +18,6 @@ FreeIpmiProvider::FreeIpmiProvider(const std::string& conn_id, const std::string
                                    const std::string& authtype, const std::string& protocol,
                                    const std::string& privlevel)
     : Provider(conn_id)
-    , m_hostname(hostname)
-    , m_username(username)
-    , m_password(password)
-    , m_protocol(protocol)
-    , m_nextReconnect{epicsTime::getCurrent()}
-    , m_ConnectionId(conn_id)
 {
 
     /** 
@@ -83,6 +77,7 @@ FreeIpmiProvider::Entity FreeIpmiProvider::getEntityValue(const std::shared_ptr<
 
 FreeIpmiProvider::Entity FreeIpmiProvider::getPicmgLedReading(const std::shared_ptr<EntityAddrType> entAddrType) {
     
+    throw std::runtime_error("getPicmgLedReading() is unsupported currently...");
     if(!entAddrType) {
         throw std::runtime_error("In method FreeIpmiProvider::getPicmgLedReading(...) EntityAddrType parameter is null.");
     }
@@ -98,7 +93,7 @@ FreeIpmiProvider::Entity FreeIpmiProvider::getPicmgLedReading(const std::shared_
     if(!led) {
         throw std::runtime_error("PICMG_LED object is null in getPicmgLedReading().");
     }
-    return readPicmgLed(this->m_ctx.ipmi,led);
+    ///return readPicmgLed(this->m_ctx.ipmi,led);
 }
 
 FreeIpmiProvider::Entity FreeIpmiProvider::getSensorReading(const std::shared_ptr<EntityAddrType> entAddrType) {
@@ -114,66 +109,8 @@ FreeIpmiProvider::Entity FreeIpmiProvider::getSensorReading(const std::shared_pt
     if(!sp) {
         throw std::runtime_error("Could not find sensor in map by key \'" + key + "\'");
     }
-
-    try
-    {
-        
-        return mConnManager->readSensor(sp);
-        ///return read_sensor(m_ctx.sdr, m_ctx.sensors, sp);
-    }
-    catch(const IpmiException &e) {
-        /**
-         * Trap possible session-timeouts and handle reconnections. 
-         * This is indicative of a session timeout/device disconnected.
-         * The actual error code/message returned from IPMI will be 16/'internal IPMI error'
-         * which isn't very descriptive. But if you dig deeper you find 'session timeout'.
-         * But sometimes you get read errors that are okay and so you do not want to
-         * disconnect. e.g., Error Code: '5', Error String: 'sensor reading unavailable'
-        */
-        if(e.getErrorCode() == 16) {
-
-            ///this->disconnect();
-
-            std::stringstream ss;
-            ss << "Could not read sensor for {\n";
-            ss << " * Connection-ID: \'" << this->m_ConnectionId << "\'\n";
-            ss << " * Hostname: \'" << this->m_hostname << "\'\n";
-            ss << " * Entity-Id: \'" << std::to_string(sp->get_entity_id()) << "\'\n";
-            ss << " * Entity-Instance: \'" << std::to_string(sp->get_entity_instance()) << "\'\n";
-            ss << " * Sensor-Id-String: \'" << sp->get_device_id_string() << "\'\n";
-            ss << " * Reason: \'Session Timeout\'" << "\n";
-            ss << " * Error Code: \'" << e.getErrorCode() << "\', Error Message: \'" << e.getErrorString() << "\'\n";
-            ss << "}\n\n";
-            throw std::runtime_error(ss.str());
-        }
-        else {
-            //this->disconnect();
-            std::stringstream ss;
-            ss << "Could not read sensor for {\n";
-            ss << " * Connection-ID: \'" << this->m_ConnectionId << "\'\n";
-            ss << " * Hostname: \'" << this->m_hostname << "\'\n";
-            ss << " * Entity-Id: \'" << std::to_string(sp->get_entity_id()) << "\'\n";
-            ss << " * Entity-Instance: \'" << std::to_string(sp->get_entity_instance()) << "\'\n";
-            ss << " * Sensor-Id-String: \'" << sp->get_device_id_string() << "\'\n";
-            ss << " * Reason: \'" << e.getErrorString() << "\'\n";
-            ss << " * Error Code: \'" << e.getErrorCode() << "\', Error Message: \'" << e.getErrorString() << "\'\n";
-            ss << "}\n\n";
-            throw std::runtime_error(ss.str());
-        }
-    }
-    catch(const std::runtime_error &e)
-    {
-        std::stringstream ss;
-        ss << "Could not read sensor for {\n";
-        ss << " * Connection-ID: \'" << this->m_ConnectionId << "\'\n";
-        ss << " * Hostname: \'" << this->m_hostname << "\'\n";
-        ss << " * Entity-Id: \'" << std::to_string(sp->get_entity_id()) << "\'\n";
-        ss << " * Entity-Instance: \'" << std::to_string(sp->get_entity_instance()) << "\'\n";
-        ss << " * Sensor-Id-String: \'" << sp->get_device_id_string() << "\'\n";
-        ss << " * Reason: " << e.what() << "\n";
-        ss << "}\n\n";
-        throw std::runtime_error(ss.str());
-    }
+    
+    return mConnManager->getSensorReading(sp);
     
 }
 

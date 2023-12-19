@@ -61,12 +61,12 @@ void Provider::tasksThread()
 {
     while (m_tasks.processing) {
         
+        process();
         m_tasks.mutex.lock();
 
         if (m_tasks.queue.empty()) {
             m_tasks.mutex.unlock();
             ///m_tasks.event.wait();
-            process();
             epicsThreadSleep(0.1);
             continue;
         }

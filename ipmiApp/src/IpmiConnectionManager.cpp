@@ -61,15 +61,27 @@ IpmiConnectionManager::~IpmiConnectionManager() {
 
 void IpmiConnectionManager::cleanup() {
 
+    if (mSensorCtx) {
+        ipmi_sensor_read_ctx_destroy(mSensorCtx);
+    }
+    // if (m_ctx.fru) {
+    //     ipmi_fru_ctx_destroy(m_ctx.fru);
+    // }
     if (mSdrCtx) {
+        if(ipmi_sdr_cache_close (mSdrCtx) < 0) {
+        LOG_INFO("Can't close SDR cache for connection id: \'" +
+        mConnId + "\' @ \'" + mHostname + "\' in cleanup method.\n");
+        }
         ipmi_sdr_ctx_destroy(mSdrCtx);
     }
     if (mIpmiCtx) {
         ipmi_ctx_close(mIpmiCtx);
         ipmi_ctx_destroy(mIpmiCtx);
     }
+    mSensorCtx = nullptr;
     mSdrCtx = nullptr;
     mIpmiCtx = nullptr;
+    mConnState = ConnectionState::DISCONNECTED;
     
 }
 
@@ -125,6 +137,10 @@ void IpmiConnectionManager::createSdrContext() {
 
 void IpmiConnectionManager::createSensorContext() {
 
+    if(!mIpmiCtx) {
+        createIpmiContext();
+    }
+    
     if(mSensorCtx) {
         ipmi_sensor_read_ctx_destroy(mSensorCtx);
         mSensorCtx = nullptr;
@@ -245,6 +261,12 @@ void IpmiConnectionManager::connect() {
     */
     mIdleTime = epicsTime::getCurrent();
     mConnStatus = true;
+    mConnState = ConnectionState::CONNECTED;
+}
+
+void IpmiConnectionManager::disconnect() {
+
+    cleanup();
 }
 
 ipmi_ctx_t IpmiConnectionManager::getIpmiCtx() {
@@ -288,6 +310,10 @@ void IpmiConnectionManager::keepAlive() {
 
 IpmiSdrInfo IpmiConnectionManager::readSdrInfo() {
     
+    if(mConnState != ConnectionState::CONNECTED) {
+        connect();
+    }
+
     int rv = -1;
 
     /** Return 0 on normal; This calls fiid_obj_clear internally*/
@@ -323,6 +349,71 @@ IpmiSdrInfo IpmiConnectionManager::readSdrInfo() {
         /* rf == -1: Error was returned. */
         throw std::runtime_error("Can't read SDR info for connection id: \'" + mConnId +
         "\', Reason: fiid_obj_get() returned -1 (Error)");
+    }
+    
+}
+
+Provider::Entity IpmiConnectionManager::getSensorReading(const std::shared_ptr<IpmiSensorRecComp> record) {
+
+    try
+    {
+        if(mConnState != ConnectionState::CONNECTED) {
+            connect();
+        }
+        return readSensor(record);
+    }
+    catch(const IpmiException &e) {
+        /**
+         * Trap possible session-timeouts and handle reconnections. 
+         * This is indicative of a session timeout/device disconnected.
+         * The actual error code/message returned from IPMI will be 16/'internal IPMI error'
+         * which isn't very descriptive. But if you dig deeper you find 'session timeout'.
+         * But sometimes you get read errors that are okay and so you do not want to
+         * disconnect. e.g., Error Code: '5', Error String: 'sensor reading unavailable'
+        */
+        if(e.getErrorCode() == 16) {
+
+            disconnect();
+
+            std::stringstream ss;
+            ss << "Could not read sensor for {\n";
+            ss << " * Connection-ID: \'" << mConnId << "\'\n";
+            ss << " * Hostname: \'" << mHostname << "\'\n";
+            ss << " * Entity-Id: \'" << std::to_string(record->get_entity_id()) << "\'\n";
+            ss << " * Entity-Instance: \'" << std::to_string(record->get_entity_instance()) << "\'\n";
+            ss << " * Sensor-Id-String: \'" << record->get_device_id_string() << "\'\n";
+            ss << " * Reason: \'Session Timeout\'" << "\n";
+            ss << " * Error Code: \'" << e.getErrorCode() << "\', Error Message: \'" << e.getErrorString() << "\'\n";
+            ss << "}\n\n";
+            throw std::runtime_error(ss.str());
+        }
+        else {
+            //this->disconnect();
+            std::stringstream ss;
+            ss << "Could not read sensor for {\n";
+            ss << " * Connection-ID: \'" << mConnId << "\'\n";
+            ss << " * Hostname: \'" << mHostname << "\'\n";
+            ss << " * Entity-Id: \'" << std::to_string(record->get_entity_id()) << "\'\n";
+            ss << " * Entity-Instance: \'" << std::to_string(record->get_entity_instance()) << "\'\n";
+            ss << " * Sensor-Id-String: \'" << record->get_device_id_string() << "\'\n";
+            ss << " * Reason: \'" << e.getErrorString() << "\'\n";
+            ss << " * Error Code: \'" << e.getErrorCode() << "\', Error Message: \'" << e.getErrorString() << "\'\n";
+            ss << "}\n\n";
+            throw std::runtime_error(ss.str());
+        }
+    }
+    catch(const std::exception& e)
+    {
+        std::stringstream ss;
+        ss << "Could not read sensor for {\n";
+        ss << " * Connection-ID: \'" << mConnId << "\'\n";
+        ss << " * Hostname: \'" << mHostname << "\'\n";
+        ss << " * Entity-Id: \'" << std::to_string(record->get_entity_id()) << "\'\n";
+        ss << " * Entity-Instance: \'" << std::to_string(record->get_entity_instance()) << "\'\n";
+        ss << " * Sensor-Id-String: \'" << record->get_device_id_string() << "\'\n";
+        ss << " * Reason: " << e.what() << "\n";
+        ss << "}\n\n";
+        throw std::runtime_error(ss.str());
     }
     
 }

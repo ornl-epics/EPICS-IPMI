@@ -47,6 +47,9 @@ epicsipmi_SRCS += freeipmiprovider.cpp
 epicsipmi_SRCS += ipmisensor.cpp
 epicsipmi_SRCS += EntityAddrType.cpp
 epicsipmi_SRCS += IpmiException.cpp
+epicsipmi_SRCS += IpmiSdrManager.cpp
+epicsipmi_SRCS += IpmiConnectionManager.cpp
+epicsipmi_SRCS += IpmiSdrInfo.cpp
 
 # ipmi_registerRecordDeviceDriver.cpp derives from ipmi.dbd
 ##ipmi_SRCS += ipmi_registerRecordDeviceDriver.cpp

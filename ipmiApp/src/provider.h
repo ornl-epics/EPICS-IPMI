@@ -108,5 +108,6 @@ class Provider {
          */
         virtual Entity getEntityValue(const std::shared_ptr<EntityAddrType> entAddrType) = 0;
         
+        virtual void process() = 0;
 
 };

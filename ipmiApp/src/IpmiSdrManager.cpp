@@ -20,6 +20,7 @@ IpmiSdrManager::IpmiSdrManager(IpmiConnectionManager &cmngr)
     }
     catch(const std::exception &e)
     {
+        mMutex.unlock();
         LOG_ERROR(e.what());
     }
     
@@ -48,11 +49,14 @@ void IpmiSdrManager::clearMaps() {
 
     if(mSensToFruMap.size() > 0)
         mSensToFruMap.clear();
+
 }
 
 void IpmiSdrManager::readSdr() {
 
     ipmi_sdr_ctx_t sdr = mConnMgr.getSdrCtx();
+
+    mMutex.lock();
 
     /* Get the SDR version. */
     if(ipmi_sdr_cache_sdr_version (sdr, &mVersion) < 0)
@@ -102,7 +106,7 @@ void IpmiSdrManager::readSdr() {
     }
 
     mReadTime = epicsTime::getCurrent();
-    
+    mMutex.unlock();
 }
 
 void IpmiSdrManager::insertRecord(ipmi_sdr_ctx_t psdr, uint16_t record_id, uint8_t record_type) {
@@ -180,19 +184,29 @@ void IpmiSdrManager::process() {
      * If the SDR changes in the device after we have already read it then
      * we get no notifications that it has changed. So let's check ourselves.
     */
-    epicsTime now = mReadTime + 15;
+    epicsTime now = mReadTime + 60;
     if(epicsTime::getCurrent() > now) {
-        std::cout << "rebuild." << std::endl;
+
         IpmiSdrInfo info = mConnMgr.getSdrInfo();
-        if(info.getVersion() == mVersion ||
+
+        if(info.getVersion() != mVersion ||
         info.getRecordCount() != mRecordCount ||
         info.getMostRecentAdditionTimestamp() != mAdditionTimestamp ||
         info.getMostRecentEraseTimestamp() != mEraseTimestamp) {
-            std::cout << "SDR has changed. Let's re-read it!" << std::endl;
-            std::cout << "Version: SDR: " << (unsigned) mVersion << ", dev: " << (unsigned) info.getVersion() << std::endl;
-            std::cout << "Record Count: SDR: " << mRecordCount << ", dev: " << info.getRecordCount() << std::endl;
-            std::cout << "Addition TS: SDR: " << mAdditionTimestamp << ", dev: " << info.getMostRecentAdditionTimestamp() << std::endl;
-            std::cout << "Erase Ts: SDR: " << mEraseTimestamp << ", dev: " << info.getMostRecentEraseTimestamp() << std::endl;
+
+            LOG_INFO("SDR difference detected for device \'" + mConnMgr.getConnectionId() +
+            "\' @ \'" + mConnMgr.getHostname() + "\'; Rebuilding the SDR now...\n\n");
+
+            std::stringstream ss;
+            
+            ss << "SDR Difference Summary {\n";
+            ss << " * Version: Cache = " << (unsigned) mVersion << ", " << mConnMgr.getConnectionId() << " = " << (unsigned) info.getVersion() << ",\n";
+            ss << " * Record Count: Cache = " << mRecordCount << ", " << mConnMgr.getConnectionId() << " = " << info.getRecordCount() << ",\n";
+            ss << " * Addition Timestamp: Cache = " << mAdditionTimestamp << ", " << mConnMgr.getConnectionId() << " = " << info.getMostRecentAdditionTimestamp() << ",\n";
+            ss << " * Erase Timestamp: Cache = " << mEraseTimestamp << ", " << mConnMgr.getConnectionId() << " = " << info.getMostRecentEraseTimestamp() << ",\n";
+            ss << "}\n\n";
+
+            std::cout << ss.str();
 
             try
             {
@@ -210,15 +224,11 @@ void IpmiSdrManager::process() {
             }
             catch(const std::exception& e)
             {
+                mMutex.unlock();
                 std::cout << "after re read SDR" << std::endl;
                 std::cerr << e.what() << '\n';
             }
             
-            
-            
-            // std::cout << "after rebuild" << std::endl;
-            
-            // std::cout << "after re read SDR" << std::endl;
         }
         mReadTime = epicsTime::getCurrent();
     }
@@ -228,25 +238,30 @@ std::shared_ptr<IpmiFruDevLocRec> IpmiSdrManager::getFruByDeviceSlaveAddress(con
 
     std::shared_ptr<IpmiFruDevLocRec> pfru = nullptr;
 
+    mMutex.lock();
     for(auto &fru : mFruDevLocRecList) {
         if(fru->get_device_slave_address() == slave_address) {
             pfru = fru;
             break;
         }
     }
+    mMutex.unlock();
     return pfru;
 }
 
 std::shared_ptr<IpmiSensorRecComp> IpmiSdrManager::findSensorByMapKey(std::string key) {
 
     std::map<std::string, std::shared_ptr<IpmiSensorRecComp>>::iterator itr;
+    std::shared_ptr<IpmiSensorRecComp> pSens = nullptr;
 
+    mMutex.lock();
     itr = mSidEntityMap.find(key);
     if(itr != mSidEntityMap.end()) {
-        return itr->second;
+        pSens = itr->second;
     }
 
-    return nullptr;
+    mMutex.unlock();
+    return pSens;
 }
 
 std::string IpmiSdrManager::getHeaderAsString() {

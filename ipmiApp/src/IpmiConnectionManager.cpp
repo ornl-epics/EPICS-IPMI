@@ -146,6 +146,7 @@ void IpmiConnectionManager::createSensorContext() {
 void IpmiConnectionManager::rebuildSdrCache() {
     
     int rv = -1;
+    LOG_INFO("Deleting out of date or invalid SDR cache file \'" + mCacheFilePath + "\' for connection id: \'" + mConnId + "\'\n");
     if((rv = ipmi_sdr_cache_close (mSdrCtx)) < 0) {
         throw std::runtime_error("Can't close SDR cache for connection id: \'" +
         mConnId + "\' @ \'" + mHostname + "\'\n");

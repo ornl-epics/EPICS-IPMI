@@ -14,6 +14,7 @@
 #include <map>
 #include <freeipmi/freeipmi.h>
 #include <epicsTime.h>
+#include <epicsMutex.h>
 #include "IpmiSensorRecFull.h"
 #include "IpmiFruDevLocRec.h"
 #include "IpmiConnectionManager.h"
@@ -24,6 +25,7 @@ private:
     
     IpmiConnectionManager &mConnMgr;
     
+    epicsMutex mMutex;
     epicsTime mReadTime;
 
     uint8_t mVersion;

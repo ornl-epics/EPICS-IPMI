@@ -13,8 +13,33 @@ IpmiSdrInfo::IpmiSdrInfo(const std::string &connectionid, fiid_obj_t response)
     decode(response);
 }
 
+IpmiSdrInfo::IpmiSdrInfo(IpmiSdrInfo &&other) {
+    
+    *this = std::move(other);
+}
+
 IpmiSdrInfo::~IpmiSdrInfo() {
 
+}
+
+IpmiSdrInfo &IpmiSdrInfo::operator=(IpmiSdrInfo &&other) {
+    
+    if(this != &other) {
+        mConnId = std::move(other.mConnId);
+        mVersion = other.mVersion;
+        mRecordCount = other.mRecordCount;
+        mFreeSpace = other.mFreeSpace;
+        mAdditionTimestamp = other.mAdditionTimestamp;
+        mEraseTimestamp = other.mEraseTimestamp;
+        mAllocationCommandSupported = other.mAllocationCommandSupported;
+        mReserveCommandSupported = other.mReserveCommandSupported;
+        mPartialAddCommandSupported = other.mPartialAddCommandSupported;
+        mDeleteCommandSupported = other.mDeleteCommandSupported;
+        mReserved = other.mReserved;
+        mModalNonModalOperationSupported = other.mModalNonModalOperationSupported;
+        mOverflowFlag = other.mOverflowFlag;
+    }
+    return *this;
 }
 
 uint8_t IpmiSdrInfo::getVersion() {

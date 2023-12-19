@@ -16,7 +16,7 @@ class IpmiSdrInfo
 {
 private:
     
-    const std::string &mConnId;
+    std::string mConnId;
     uint8_t mVersion;
     uint16_t mRecordCount;
     uint16_t mFreeSpace;
@@ -35,7 +35,9 @@ private:
 public:
 
     IpmiSdrInfo(const std::string &connectionid, fiid_obj_t response);
+    IpmiSdrInfo(IpmiSdrInfo &&other);
     ~IpmiSdrInfo();
+    IpmiSdrInfo &operator=(IpmiSdrInfo &&other);
     uint8_t getVersion();
     uint16_t getRecordCount();
     uint32_t getMostRecentAdditionTimestamp();

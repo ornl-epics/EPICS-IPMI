@@ -54,9 +54,9 @@ void IpmiSdrManager::clearMaps() {
 
 void IpmiSdrManager::readSdr() {
 
-    ipmi_sdr_ctx_t sdr = mConnMgr.getSdrCtx();
-
     mMutex.lock();
+    
+    ipmi_sdr_ctx_t sdr = mConnMgr.getSdrCtx();
 
     /* Get the SDR version. */
     if(ipmi_sdr_cache_sdr_version (sdr, &mVersion) < 0)

@@ -28,11 +28,11 @@ private:
     epicsMutex mMutex;
     epicsTime mReadTime;
 
-    uint8_t mVersion;
-    uint16_t mRecordCount;
-    uint16_t mFreeSpace;
-    uint32_t mAdditionTimestamp;
-    uint32_t mEraseTimestamp;
+    uint8_t mVersion{0};
+    uint16_t mRecordCount{0};
+    uint16_t mFreeSpace{0};
+    uint32_t mAdditionTimestamp{0};
+    uint32_t mEraseTimestamp{0};
 
     std::vector<std::shared_ptr<IpmiSensorRecFull>> mSensRecFullList;
     std::vector<std::shared_ptr<IpmiSensorRecComp>> mSensRecCompactList;
@@ -41,11 +41,19 @@ private:
 
     std::map<std::string, std::shared_ptr<IpmiSensorRecComp>> mSidEntityMap;
     std::map<std::shared_ptr<IpmiSensorRecComp>, uint16_t> mSensToFruMap;
+
+    enum class SDRSTATE {
+        UNINITIALIZED,
+        INITIALIZED
+    };
+
+    SDRSTATE mSdrState{SDRSTATE::UNINITIALIZED};
     
     void readSdr();
     void insertRecord(ipmi_sdr_ctx_t psdr, uint16_t record_id, uint8_t record_type);
     void insertIntoEntityMap(std::shared_ptr<IpmiSensorRecComp> prec);
     void clearMaps();
+    std::string timestampToString(const uint32_t &tstamp);
 
     
 public:
@@ -55,6 +63,8 @@ public:
     std::shared_ptr<IpmiFruDevLocRec> getFruByDeviceSlaveAddress(const uint8_t slave_address);
     std::shared_ptr<IpmiSensorRecComp> findSensorByMapKey(std::string key);
     std::string getHeaderAsString();
+
+    bool sdrStateIsInitialized();
     
 };
 

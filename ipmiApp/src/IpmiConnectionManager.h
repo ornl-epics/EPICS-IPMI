@@ -58,6 +58,7 @@ private:
     void openSdrCache();
     void connect();
     void disconnect();
+    void reconnect();
     void cleanup();
     void keepAlive();
     IpmiSdrInfo readSdrInfo();

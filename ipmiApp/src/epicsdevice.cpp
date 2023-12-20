@@ -47,7 +47,7 @@ long initInpRecord(T* rec)
         dispatcher::checkLink(eaddrt);
     }
     catch(const std::exception &e) {
-        std::cerr << "ERROR: Record \'" << rec->name << "\' " << e.what() << '\n';
+        std::cerr << "ERROR: Record Init \'" << rec->name << "\' " << e.what() << '\n';
         if (rec->tpro == 1) {
             LOG_ERROR("invalid record link or no connection");
         }

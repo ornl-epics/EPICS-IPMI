@@ -107,6 +107,7 @@ void IpmiSdrManager::readSdr() {
 
     mReadTime = epicsTime::getCurrent();
     mMutex.unlock();
+    mSdrState = SDRSTATE::INITIALIZED;
 }
 
 void IpmiSdrManager::insertRecord(ipmi_sdr_ctx_t psdr, uint16_t record_id, uint8_t record_type) {
@@ -195,18 +196,25 @@ void IpmiSdrManager::process() {
         info.getMostRecentEraseTimestamp() != mEraseTimestamp) {
 
             LOG_INFO("SDR difference detected for device \'" + mConnMgr.getConnectionId() +
-            "\' @ \'" + mConnMgr.getHostname() + "\'; Rebuilding the SDR cache now...\n\n");
+            "\' @ \'" + mConnMgr.getHostname() + "\'\n\n");
 
             std::stringstream ss;
             
             ss << "SDR Difference Summary {\n";
             ss << " * Version: Cache = " << (unsigned) mVersion << ", " << mConnMgr.getConnectionId() << " = " << (unsigned) info.getVersion() << ",\n";
             ss << " * Record Count: Cache = " << mRecordCount << ", " << mConnMgr.getConnectionId() << " = " << info.getRecordCount() << ",\n";
-            ss << " * Addition Timestamp: Cache = " << mAdditionTimestamp << ", " << mConnMgr.getConnectionId() << " = " << info.getMostRecentAdditionTimestamp() << ",\n";
-            ss << " * Erase Timestamp: Cache = " << mEraseTimestamp << ", " << mConnMgr.getConnectionId() << " = " << info.getMostRecentEraseTimestamp() << ",\n";
+            ss << " * Addition Timestamp: Cache = " << timestampToString(mAdditionTimestamp) << ", "
+            << mConnMgr.getConnectionId() << " = " << timestampToString(info.getMostRecentAdditionTimestamp()) << ",\n";
+
+            ss << " * Erase Timestamp: Cache = " << timestampToString(mEraseTimestamp) << ", "
+            << mConnMgr.getConnectionId() << " = " << timestampToString(info.getMostRecentEraseTimestamp()) << ",\n";
+
             ss << "}\n\n";
 
             std::cout << ss.str();
+
+            LOG_INFO("Rebuilding the SDR cache now for device \'" + mConnMgr.getConnectionId() +
+            "\' @ \'" + mConnMgr.getHostname() + "\'\n\n");
 
             try
             {
@@ -220,7 +228,7 @@ void IpmiSdrManager::process() {
                 catch(const std::exception& e)
                 {
                     mMutex.unlock();
-                    LOG_ERROR("Could not read SDR cache for rebuild for \'" + mConnMgr.getConnectionId() + "\' @ \'"
+                    LOG_ERROR("Could not read SDR cache after rebuild for \'" + mConnMgr.getConnectionId() + "\' @ \'"
                     + mConnMgr.getHostname() + "\' - " + e.what() + "\n");
                 }
             }
@@ -263,29 +271,41 @@ std::shared_ptr<IpmiSensorRecComp> IpmiSdrManager::findSensorByMapKey(std::strin
     return pSens;
 }
 
+std::string IpmiSdrManager::timestampToString(const uint32_t &tstamp) {
+    
+    epicsTimeStamp etsmp;
+    epicsTimeFromTime_t(&etsmp, tstamp);
+    char timetxt[40] = {'\0'};
+    epicsTimeToStrftime(timetxt, sizeof(timetxt), "[%H:%M:%S %m/%d/%Y]", &etsmp);
+    return std::string(timetxt);
+}
+
 std::string IpmiSdrManager::getHeaderAsString() {
 
     std::stringstream ss;
-    ss << mConnMgr.getConnectionId() << ":" << mConnMgr.getHostname() << " SDR Info {" << std::endl;
+
+    if(mSdrState == SDRSTATE::UNINITIALIZED) {
+        ss << mConnMgr.getConnectionId() << ":" << mConnMgr.getHostname() << " SDR Cache Info {" << std::endl;
+        ss << " * SDR Cache State: \'UNINITIALIZED\'" << std::endl;
+        ss << " * SDR Record Count: ?," << std::endl;
+        ss << " * SDR Version: ?," << std::endl;
+        ss << " * SDR Addition Timestamp: ?," << std::endl;
+        ss << " * SDR Erase Timestamp: ?" << std::endl;
+        ss << "}" << std::endl;
+        return ss.str();
+    }
+
+    ss << mConnMgr.getConnectionId() << ":" << mConnMgr.getHostname() << " SDR Cache Info {" << std::endl;
+    ss << " * SDR Cache State: \'INITIALIZED\'" << std::endl;
     ss << " * SDR Record Count: " << mRecordCount << "," << std::endl;
     ss << " * SDR Version: " << (unsigned) mVersion << "," << std::endl;
-
-    epicsTimeStamp etsmp;
-    epicsTimeFromTime_t(&etsmp, mAdditionTimestamp);
-    char timetxt[40] = {'\0'};
-    epicsTimeToStrftime(timetxt, sizeof(timetxt), "[%H:%M:%S %m/%d/%Y]", &etsmp);
-    ss << " * SDR Addition Timestamp: " << timetxt << "," << std::endl;
-
-    if(mEraseTimestamp > 0) {
-        timetxt[40] = {'\0'};
-        epicsTimeFromTime_t(&etsmp, mEraseTimestamp);
-        epicsTimeToStrftime(timetxt, sizeof(timetxt), "[%H:%M:%S %m/%d/%Y]", &etsmp);
-        ss << " * SDR Erase Timestamp: " << timetxt << std::endl;
-    }
-    else
-        ss << " * SDR Erase Timestamp: " << (unsigned) mEraseTimestamp << std::endl;
-
+    ss << " * SDR Addition Timestamp: " << timestampToString(mAdditionTimestamp) << "," << std::endl;
+    ss << " * SDR Erase Timestamp: " << timestampToString(mEraseTimestamp) << std::endl;
     ss << "}" << std::endl;
     
     return ss.str();
+}
+
+bool IpmiSdrManager::sdrStateIsInitialized() {
+    return (mSdrState == SDRSTATE::INITIALIZED);
 }

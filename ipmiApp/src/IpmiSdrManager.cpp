@@ -55,7 +55,7 @@ void IpmiSdrManager::clearMaps() {
 void IpmiSdrManager::readSdr() {
 
     mMutex.lock();
-    
+
     ipmi_sdr_ctx_t sdr = mConnMgr.getSdrCtx();
 
     /* Get the SDR version. */
@@ -195,7 +195,7 @@ void IpmiSdrManager::process() {
         info.getMostRecentEraseTimestamp() != mEraseTimestamp) {
 
             LOG_INFO("SDR difference detected for device \'" + mConnMgr.getConnectionId() +
-            "\' @ \'" + mConnMgr.getHostname() + "\'; Rebuilding the SDR now...\n\n");
+            "\' @ \'" + mConnMgr.getHostname() + "\'; Rebuilding the SDR cache now...\n\n");
 
             std::stringstream ss;
             
@@ -211,26 +211,25 @@ void IpmiSdrManager::process() {
             try
             {
                 mConnMgr.rebuildSdrCache();
-            }
-            catch(const std::exception& e)
-            {
-                std::cout << "after rebuild" << std::endl;
-                std::cerr << e.what() << '\n';
-            }
 
-            try
-            {
-                readSdr();
+                try
+                {
+                    readSdr();
+                    mReadTime = epicsTime::getCurrent();
+                }
+                catch(const std::exception& e)
+                {
+                    mMutex.unlock();
+                    LOG_ERROR("Could not read SDR cache for rebuild for \'" + mConnMgr.getConnectionId() + "\' @ \'"
+                    + mConnMgr.getHostname() + "\' - " + e.what() + "\n");
+                }
             }
             catch(const std::exception& e)
             {
-                mMutex.unlock();
-                std::cout << "after re read SDR" << std::endl;
-                std::cerr << e.what() << '\n';
+                LOG_ERROR("Could not rebuild SDR cache for \'" + mConnMgr.getConnectionId() + "\' @ \'"
+                + mConnMgr.getHostname() + "\' - " + e.what() + "\n");
             }
-            
         }
-        mReadTime = epicsTime::getCurrent();
     }
 }
 

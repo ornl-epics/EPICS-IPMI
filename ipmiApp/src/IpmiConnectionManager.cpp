@@ -164,12 +164,12 @@ void IpmiConnectionManager::rebuildSdrCache() {
     int rv = -1;
     LOG_INFO("Deleting out of date or invalid SDR cache file \'" + mCacheFilePath + "\' for connection id: \'" + mConnId + "\'\n");
     if((rv = ipmi_sdr_cache_close (mSdrCtx)) < 0) {
-        throw std::runtime_error("Can't close SDR cache for connection id: \'" +
+        LOG_ERROR("Can't close SDR cache for connection id: \'" +
         mConnId + "\' @ \'" + mHostname + "\'\n");
     }
 
     if((rv = ipmi_sdr_cache_delete(mSdrCtx, mCacheFilePath.c_str())) < 0) {
-        throw std::runtime_error("Can't delete SDR cache file for connection id: \'" +
+        LOG_ERROR("Can't delete SDR cache file for connection id: \'" +
         mConnId + "\' @ \'" + mHostname + "\'\n");
     }
     
@@ -354,6 +354,20 @@ IpmiSdrInfo IpmiConnectionManager::readSdrInfo() {
 }
 
 Provider::Entity IpmiConnectionManager::getSensorReading(const std::shared_ptr<IpmiSensorRecComp> record) {
+
+
+    if(mConnState != ConnectionState::CONNECTED) {
+        std::stringstream ss;
+        ss << "Could not read sensor for {\n";
+        ss << " * Connection-ID: \'" << mConnId << "\'\n";
+        ss << " * Hostname: \'" << mHostname << "\'\n";
+        ss << " * Entity-Id: \'" << std::to_string(record->get_entity_id()) << "\'\n";
+        ss << " * Entity-Instance: \'" << std::to_string(record->get_entity_instance()) << "\'\n";
+        ss << " * Sensor-Id-String: \'" << record->get_device_id_string() << "\'\n";
+        ss << " * Reason: Device is disconnected.\n";
+        ss << "}\n\n";
+        throw std::runtime_error(ss.str());
+    }
 
     try
     {

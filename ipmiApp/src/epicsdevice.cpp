@@ -47,7 +47,7 @@ long initInpRecord(T* rec)
         dispatcher::checkLink(eaddrt);
     }
     catch(const std::exception &e) {
-        std::cerr << "ERROR: Record Init \'" << rec->name << "\' " << e.what() << '\n';
+        LOG_ERROR("Record Init \'" + std::string(rec->name) + "\': " + e.what() + '\n');
         if (rec->tpro == 1) {
             LOG_ERROR("invalid record link or no connection");
         }
@@ -79,9 +79,18 @@ static long processAiRecord(aiRecord* rec)
         rec->pact = 1;
 
         std::function<void()> cb = std::bind(callbackRequestProcessCallback, &ctx->callback, rec->prio, rec);
-        if (dispatcher::scheduleGet(ctx->entAddrType, cb, ctx->entity) == false) {
-            // Keep PACT=1 to prevent further processing
+
+        try
+        {
+            dispatcher::scheduleGet(ctx->entAddrType, cb, ctx->entity);
+        }
+        catch(const std::exception& e)
+        {
+            LOG_ERROR("Record Process \'" + std::string(rec->name) + "\': " + e.what() + '\n');
             recGblSetSevr(rec, epicsAlarmUDF, epicsSevInvalid);
+
+            /** Try again, next time around*/
+            rec->pact = 0;
             return -1;
         }
 

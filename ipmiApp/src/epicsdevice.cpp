@@ -26,17 +26,21 @@
 #include "EntityAddrType.h"
 #include <sstream>
 #include <iostream>
+#include <memory>
 
 struct IpmiRecord {
     CALLBACK callback;
     Provider::Entity entity;
-    std::shared_ptr<EntityAddrType> entAddrType;
+    std::shared_ptr<EntityAddrType> entAddrType{nullptr};
 };
 
 template<typename T>
 long initInpRecord(T* rec)
 {
     
+    void *buffer = callocMustSucceed(1, sizeof(IpmiRecord), "ipmi::initGeneric");
+    rec->dpvt = new (buffer) IpmiRecord;
+
     std::shared_ptr<EntityAddrType> eaddrt = nullptr;
     try {
         /** The connection has already been initialized and the SDR read.
@@ -45,22 +49,13 @@ long initInpRecord(T* rec)
         */
         eaddrt = std::make_shared<EntityAddrType>(rec->inp.value.instio.string);
         dispatcher::checkLink(eaddrt);
+        IpmiRecord *ctx = reinterpret_cast<IpmiRecord*>(rec->dpvt);
+        ctx->entAddrType = eaddrt;
     }
     catch(const std::exception &e) {
         LOG_ERROR("Record Init \'" + std::string(rec->name) + "\': " + e.what() + '\n');
-        if (rec->tpro == 1) {
-            LOG_ERROR("invalid record link or no connection");
-        }
-        rec->dpvt = nullptr;
         return -1;
     }
-    
-    void* buffer = callocMustSucceed(1, sizeof(IpmiRecord), "ipmi::initGeneric");
-    rec->dpvt = new (buffer) IpmiRecord;
-
-    IpmiRecord *ctx = reinterpret_cast<IpmiRecord*>(rec->dpvt);
-    ctx->entAddrType = eaddrt;
-    
     return 0;
 }
 
@@ -69,12 +64,33 @@ static long processAiRecord(aiRecord* rec)
     IpmiRecord *ctx = reinterpret_cast<IpmiRecord*>(rec->dpvt);
     
     if (ctx == nullptr) {
+        /** Something did not go right in record-init*/
         // Keep PACT=1 to prevent further processing
         rec->pact = 1;
         recGblSetSevr(rec, epicsAlarmUDF, epicsSevInvalid);
         return -1;
     }
 
+    /** We never fully initialized. Maybe the device was offline during IOC boot,
+     *  which kept the entityAddrType from getting created.
+     *  Let's try to get the entityAddrType again and recover.
+    */
+    if(ctx->entAddrType == nullptr) {
+        std::shared_ptr<EntityAddrType> eaddrt = nullptr;
+        try
+        {
+            eaddrt = std::make_shared<EntityAddrType>(rec->inp.value.instio.string);
+            dispatcher::checkLink(eaddrt);
+            ctx->entAddrType = eaddrt;
+        }
+        catch(const std::exception &e)
+        {
+            LOG_ERROR("Record Process \'" + std::string(rec->name) +
+            "\': failed to parse inout string - " + e.what() + '\n');
+            return -1;
+        }
+    }
+    
     if (rec->pact == 0) {
         rec->pact = 1;
 

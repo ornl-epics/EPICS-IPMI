@@ -67,7 +67,5 @@ class FreeIpmiProvider : public Provider
         Entity getPicmgLedReading(const std::shared_ptr<EntityAddrType> entAddrType);
         static int compareSdrRecordKeys(ipmi_sdr_ctx_t sdr, const std::shared_ptr<IpmiSensorRecComp> record);
 
-    private:
-
         
 };

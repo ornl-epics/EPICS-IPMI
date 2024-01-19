@@ -189,6 +189,7 @@ void IpmiSdrManager::process() {
     if(epicsTime::getCurrent() > now) {
 
         IpmiSdrInfo info = mConnMgr.getSdrInfo();
+        mReadTime = epicsTime::getCurrent();
 
         if(info.getVersion() != mVersion ||
         info.getRecordCount() != mRecordCount ||
@@ -223,7 +224,6 @@ void IpmiSdrManager::process() {
                 try
                 {
                     readSdr();
-                    mReadTime = epicsTime::getCurrent();
                 }
                 catch(const std::exception& e)
                 {

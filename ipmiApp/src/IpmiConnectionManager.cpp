@@ -22,19 +22,32 @@ IpmiConnectionManager::IpmiConnectionManager(const std::string &connectionid, co
 , mAuthtype(initAuthtype(authtype, username))
 , mPrivlevel(initPrivLevel(privilegelevel))
 , mProtocol(protocol)
-, mCacheFilePath("/tmp/ipmi_sdr_" + connectionid + ".cache")
+, mCachePath(fs::current_path()/"iocBoot/var/ipmi")
+, mCacheFile(mCachePath / (connectionid + "." + hostname + ".cache"))
 {
-    
+
     mSdrRepositoryInfoRs = fiid_obj_create(tmpl_cmd_get_sdr_repository_info_rs);
     mSdrRepositoryInfoRq = fiid_obj_create(tmpl_cmd_get_sdr_repository_info_rq);
 
     try
     {
+        if(!fs::exists(mCachePath))
+        {
+            ///std::cout << "IPMI cache directory does not exist! \'" << mCachePath << "\'" << std::endl;
+            LOG_INFO("IPMI cache directory does not exist! \'" + mCachePath.string() + "\'");
+            LOG_INFO("Creating the IPMI cache directory now...");
+            fs::create_directory(mCachePath);
+        }
         createIpmiContext();
         createSdrContext();
         connect();
         openSdrCache();
         createSensorContext(); /** This has to come after connection is ready to go.*/
+    }
+    catch(fs::filesystem_error const &fserr)
+    {
+        LOG_ERROR(fserr.what());
+        cleanup();
     }
     catch(const std::exception &e)
     {
@@ -88,7 +101,7 @@ void IpmiConnectionManager::cleanup() {
     mIpmiCtx = nullptr;
     mConnState = ConnectionState::DISCONNECTED;
     mCacheFileIsOpen = false;
-    
+    return;
 }
 
 uint8_t IpmiConnectionManager::initAuthtype(const std::string &authenticationtype, const std::string &username) {
@@ -151,13 +164,13 @@ void IpmiConnectionManager::createSensorContext() {
 void IpmiConnectionManager::rebuildSdrCache() {
     
     int rv = -1;
-    LOG_INFO("Deleting out of date or invalid SDR cache file \'" + mCacheFilePath + "\' for connection id: \'" + mConnId + "\'\n");
+    LOG_INFO("Deleting out of date or invalid SDR cache file \'" + mCacheFile.string() + "\' for connection id: \'" + mConnId + "\'\n");
     if((rv = ipmi_sdr_cache_close (mSdrCtx)) < 0) {
         LOG_ERROR("Can't close SDR cache for connection id: \'" +
         mConnId + "\' @ \'" + mHostname + "\'\n");
     }
 
-    if((rv = ipmi_sdr_cache_delete(mSdrCtx, mCacheFilePath.c_str())) < 0) {
+    if((rv = ipmi_sdr_cache_delete(mSdrCtx, mCacheFile.c_str())) < 0) {
         LOG_ERROR("Can't delete SDR cache file for connection id: \'" +
         mConnId + "\' @ \'" + mHostname + "\'\n");
     }
@@ -171,24 +184,24 @@ void IpmiConnectionManager::openSdrCache() {
     /** open creates/opens the file and reads it into memory using mmap. So all
      * of the sdr parse calls come from memory, not the file.
     */
-    if ((rv = ipmi_sdr_cache_open(mSdrCtx, mIpmiCtx, mCacheFilePath.c_str())) < 0) {
+    if ((rv = ipmi_sdr_cache_open(mSdrCtx, mIpmiCtx, mCacheFile.c_str())) < 0) {
         
         switch (ipmi_sdr_ctx_errnum(mSdrCtx)) {
         case IPMI_SDR_ERR_CACHE_OUT_OF_DATE:
         case IPMI_SDR_ERR_CACHE_INVALID:
-            LOG_INFO("Deleting out of date or invalid SDR cache file \'" + mCacheFilePath + "\' for connection id: \'" + mConnId + "\'");
-            (void)ipmi_sdr_cache_delete(mSdrCtx, mCacheFilePath.c_str());
+            LOG_INFO("Deleting out of date or invalid SDR cache file \'" + mCacheFile.string() + "\' for connection id: \'" + mConnId + "\'");
+            (void)ipmi_sdr_cache_delete(mSdrCtx, mCacheFile.c_str());
             // fall thru
         case IPMI_SDR_ERR_CACHE_READ_CACHE_DOES_NOT_EXIST:
-            LOG_INFO("Creating new SDR cache file \'" + mCacheFilePath + "\' for connection id: \'" + mConnId + "\'");
-            (void)ipmi_sdr_cache_create(mSdrCtx, mIpmiCtx, mCacheFilePath.c_str(), IPMI_SDR_CACHE_CREATE_FLAGS_DEFAULT, nullptr, nullptr);
+            LOG_INFO("Creating new SDR cache file \'" + mCacheFile.string() + "\' for connection id: \'" + mConnId + "\'");
+            (void)ipmi_sdr_cache_create(mSdrCtx, mIpmiCtx, mCacheFile.c_str(), IPMI_SDR_CACHE_CREATE_FLAGS_DEFAULT, nullptr, nullptr);
             break;
         default:
-            throw std::runtime_error("Can't open SDR cache file \'" + mCacheFilePath + "\' for connection id: \'" + mConnId + "\' -" 
+            throw std::runtime_error("Can't open SDR cache file \'" + mCacheFile.string() + "\' for connection id: \'" + mConnId + "\' -" 
             + std::string(ipmi_ctx_errormsg(mIpmiCtx)));
         }
-        if ((rv = ipmi_sdr_cache_open(mSdrCtx, mIpmiCtx, mCacheFilePath.c_str())) < 0)
-            throw std::runtime_error("Can't open SDR cache file \'" + mCacheFilePath + "\' for connection id: \'" + mConnId + "\' -" 
+        if ((rv = ipmi_sdr_cache_open(mSdrCtx, mIpmiCtx, mCacheFile.c_str())) < 0)
+            throw std::runtime_error("Can't open SDR cache file \'" + mCacheFile.string() + "\' for connection id: \'" + mConnId + "\' -" 
             + std::string(ipmi_ctx_errormsg(mIpmiCtx)));
     }
 

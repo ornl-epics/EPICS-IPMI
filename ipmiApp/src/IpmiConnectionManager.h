@@ -4,6 +4,7 @@
  * 
  */
 
+#include <filesystem>
 #include <string>
 #include <cstdint>
 #include <freeipmi/freeipmi.h>
@@ -15,6 +16,8 @@
 
 #ifndef IPMIAPP_SRC_CONNECTIONMANAGER_H_
 #define IPMIAPP_SRC_CONNECTIONMANAGER_H_
+
+namespace fs = std::filesystem;
 
 enum class ConnectionState {
     DISCONNECTED,
@@ -44,7 +47,8 @@ private:
     ipmi_ctx_t mIpmiCtx{nullptr};
     ipmi_sdr_ctx_t mSdrCtx{nullptr};
     ipmi_sensor_read_ctx_t mSensorCtx{nullptr};
-    const std::string mCacheFilePath;
+    const fs::path mCachePath;
+    const fs::path mCacheFile;
     bool mCacheFileIsOpen{false};
     bool mConnStatus{false};
     epicsTime mIdleTime;

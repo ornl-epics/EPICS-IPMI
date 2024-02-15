@@ -6,6 +6,7 @@ include $(TOP)/configure/CONFIG
 #=============================
 
 CXXFLAGS += -g -ggdb -O0 -std=c++17 -fpermissive
+LDLIBS = -lstdc++fs
 
 #=============================
 # Build the IOC application

@@ -6,6 +6,9 @@ include $(TOP)/configure/CONFIG
 #=============================
 
 CXXFLAGS += -g -ggdb -O0 -std=c++17 -fpermissive
+
+# stdc++fs needs to be linked when using the std::filesytem
+# library and a gcc version less than 9.
 LDLIBS = -lstdc++fs
 
 #=============================
@@ -80,7 +83,6 @@ report-sdr_LIBS += freeipmi
 
 #===========================
 
-#USR_CXXFLAGS += -std=c++11 -fpermissive
 
 include $(TOP)/configure/RULES
 #----------------------------------------

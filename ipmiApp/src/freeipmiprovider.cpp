@@ -20,7 +20,6 @@ FreeIpmiProvider::FreeIpmiProvider(const std::string& conn_id, const std::string
 : Provider(conn_id)
 {
 
-    
     mConnManager = new IpmiConnectionManager(conn_id, hostname, username, password,
     authtype, protocol, privlevel);
 

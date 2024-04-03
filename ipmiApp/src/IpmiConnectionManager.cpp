@@ -33,11 +33,11 @@ IpmiConnectionManager::IpmiConnectionManager(const std::string &connectionid, co
     {
         if(!fs::exists(mCachePath))
         {
-            ///std::cout << "IPMI cache directory does not exist! \'" << mCachePath << "\'" << std::endl;
             LOG_INFO("IPMI cache directory does not exist! \'" + mCachePath.string() + "\'");
             LOG_INFO("Creating the IPMI cache directory now...");
             fs::create_directory(mCachePath);
         }
+
         createIpmiContext();
         createSdrContext();
         connect();
@@ -194,7 +194,7 @@ void IpmiConnectionManager::openSdrCache() {
             // fall thru
         case IPMI_SDR_ERR_CACHE_READ_CACHE_DOES_NOT_EXIST:
             LOG_INFO("Creating new SDR cache file \'" + mCacheFile.string() + "\' for connection id: \'" + mConnId + "\'");
-            (void)ipmi_sdr_cache_create(mSdrCtx, mIpmiCtx, mCacheFile.c_str(), IPMI_SDR_CACHE_CREATE_FLAGS_DEFAULT, nullptr, nullptr);
+            (void)ipmi_sdr_cache_create(mSdrCtx, mIpmiCtx, mCacheFile.c_str(), IPMI_SDR_CACHE_CREATE_FLAGS_DEFAULT, NULL, NULL);
             break;
         default:
             throw std::runtime_error("Can't open SDR cache file \'" + mCacheFile.string() + "\' for connection id: \'" + mConnId + "\' -" 

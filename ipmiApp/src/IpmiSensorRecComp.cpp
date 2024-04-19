@@ -145,3 +145,11 @@ std::string IpmiSensorRecComp::to_string() const {
     return ss.str();
 }
 
+std::string IpmiSensorRecComp::get_entity_id_string() const
+{
+    std::stringstream ss;
+    ss << (unsigned) entity_id << ":" << (unsigned) entity_instance <<
+    " \'" << device_id_string << "\'" << std::endl;
+    return ss.str();
+}
+

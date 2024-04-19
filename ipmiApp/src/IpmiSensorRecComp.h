@@ -44,6 +44,7 @@ public:
     uint8_t get_event_reading_type_code() const;
     uint8_t get_sensor_base_unit_type() const;
     std::string get_sensor_base_unit_type_str() const;
+    std::string get_entity_id_string() const;
 
     const common::buffer<uint8_t, IPMI_SDR_MAX_RECORD_LENGTH> &get_record_data() const;
 

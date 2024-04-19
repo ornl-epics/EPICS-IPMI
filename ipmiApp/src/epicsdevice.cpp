@@ -117,6 +117,19 @@ static long processAiRecord(aiRecord* rec)
     rec->pact = 0;
 
     rec->val = ctx->entity.getField<double>("VAL", rec->val);
+    /**
+     * Use the 'THRESHOLDS' to check the readable bits that are associated.
+     * int thresholds = ctx->entity.getField<int>("THRESHOLDS", 0);
+     * */
+    /** Do we have thresholds? Check the readable status bits to find out.
+     *  also, these are only available on threshold-type sensors.
+    */
+    
+    rec->low = ctx->entity.getField<double>("LOW", rec->low);
+    rec->lolo = ctx->entity.getField<double>("LOLO", rec->lolo);
+    rec->high = ctx->entity.getField<double>("HIGH", rec->high);
+    rec->hihi = ctx->entity.getField<double>("HIHI", rec->hihi);
+    
     /** TODO: Why rval?*/
     /** rec->rval = rec->val;*/
 

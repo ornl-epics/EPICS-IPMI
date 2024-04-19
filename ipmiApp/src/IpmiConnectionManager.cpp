@@ -11,6 +11,24 @@
 #include <cmath>
 #include <unistd.h>
 
+const std::map<std::string, std::string> IpmiConnectionManager::mThresholdsMap =
+{
+    {"LOLO", "lower_non_recoverable_threshold"},
+    {"LOW", "lower_critical_threshold"},
+    {"HIGH", "upper_critical_threshold"},
+    {"HIHI", "upper_non_recoverable_threshold"}
+};
+
+const std::string IpmiConnectionManager::mThresholdReadables [] =
+{
+    "readable_thresholds.lower_non_critical_threshold",
+    "readable_thresholds.lower_critical_threshold",
+    "readable_thresholds.lower_non_recoverable_threshold",
+    "readable_thresholds.upper_non_critical_threshold",
+    "readable_thresholds.upper_critical_threshold",
+    "readable_thresholds.upper_non_recoverable_threshold"
+};
+
 IpmiConnectionManager::IpmiConnectionManager(const std::string &connectionid, const std::string &hostname,
     const std::string &username, const std::string &password,
     const std::string &authtype, const std::string &protocol,
@@ -28,6 +46,8 @@ IpmiConnectionManager::IpmiConnectionManager(const std::string &connectionid, co
 
     mSdrRepositoryInfoRs = fiid_obj_create(tmpl_cmd_get_sdr_repository_info_rs);
     mSdrRepositoryInfoRq = fiid_obj_create(tmpl_cmd_get_sdr_repository_info_rq);
+    mGetSensorThresholdsRq = fiid_obj_create(tmpl_cmd_get_sensor_thresholds_rq);
+    mGetSensorThresholdsRs = fiid_obj_create(tmpl_cmd_get_sensor_thresholds_rs);
 
     try
     {
@@ -496,6 +516,7 @@ Provider::Entity IpmiConnectionManager::readSensor(const std::shared_ptr<IpmiSen
         if(reading) {
             entity["VAL"] = std::round(*reading * 100.0) / 100.0;
             free(reading);
+            getSensorThresholds(entity, record);
         }
         else
             entity["VAL"] = (double) eventMask;
@@ -506,6 +527,84 @@ Provider::Entity IpmiConnectionManager::readSensor(const std::shared_ptr<IpmiSen
     
     mIdleTime = epicsTime::getCurrent();
     return entity;
+}
+
+void IpmiConnectionManager::getSensorThresholds(Provider::Entity &entity, const std::shared_ptr<IpmiSensorRecComp> record)
+{
+    
+    int rv = (-1);
+    if((rv = fiid_obj_clear(mGetSensorThresholdsRq)) < 0) {
+        throw std::runtime_error("Can't clear get_sensor_threshold_request object for "
+        "sensor-ID: " + record->get_entity_id_string() + " for connection id: \'" + mConnId + "\'\n");
+    }
+    if((rv = fiid_obj_clear(mGetSensorThresholdsRs)) < 0) {
+        throw std::runtime_error("Can't clear get_sensor_threshold_response object for "
+        "sensor-ID: " + record->get_entity_id_string() + " for connection id: \'" + mConnId + "\'\n");
+    }
+
+    if((rv = fill_cmd_get_sensor_thresholds (record->get_sensor_number(), mGetSensorThresholdsRq)) < 0) {
+        throw std::runtime_error("Can't fill get_sensor_threshold_request object for "
+        "sensor-ID: " + record->get_entity_id_string() + " for connection id: \'" + mConnId + "\'\n");
+    }
+
+    //rv = ipmi_cmd(mIpmiCtx, record->get_sensor_owner_lun(), IPMI_NET_FN_SENSOR_EVENT_RQ, thresh_rq, thresh_rs);
+    /** 130 is device-access-addres (65) from Fru Device Locator Record shifted left << 1-bit*/
+    uint8_t rs_addr = (record->get_sensor_owner_id() << 1);
+    rv = ipmi_cmd_ipmb(mIpmiCtx, record->get_channel_number(), rs_addr, record->get_sensor_owner_lun(),
+    IPMI_NET_FN_SENSOR_EVENT_RQ, mGetSensorThresholdsRq, mGetSensorThresholdsRs);
+    
+    if(rv < 0)
+    {
+        int errnum = ipmi_ctx_errnum(mIpmiCtx);
+        std::string errmsg = ipmi_ctx_errormsg(mIpmiCtx);
+        throw IpmiException(errnum, std::move(errmsg));
+    }
+
+    uint64_t compCode = 0;
+    rv = fiid_obj_get(mGetSensorThresholdsRs, "comp_code", &compCode);
+
+    if(rv < 0)
+    {
+        throw std::runtime_error("Can't get completion code from get_sensor_threshold_response object for "
+        "sensor-ID: " + record->get_entity_id_string() + " for connection id: \'" + mConnId + "\'\n");
+    }
+
+    uint64_t tval = 0;
+    int thresh_readable = 0;
+    for(int i = 0; i < 6; i++)
+    {
+        if(fiid_obj_get(mGetSensorThresholdsRs, mThresholdReadables[i].c_str(), &tval) < 0)
+        {
+            throw std::runtime_error("Can't get \'" + mThresholdReadables[i] +
+            "\' from get_sensor_threshold_response object for "
+            "sensor-ID: " + record->get_entity_id_string() + " for connection id: \'" + mConnId + "\'\n");
+        }
+        thresh_readable |= (tval & 0x01) << i;
+        tval = 0;
+    }
+    
+    entity["THRESHOLDS"] = thresh_readable;
+
+    for(auto &i : mThresholdsMap)
+    {
+        if(fiid_obj_get(mGetSensorThresholdsRs, i.second.c_str(), &tval) < 0)
+        {
+            throw std::runtime_error("Can't get \'" + i.second +
+            "\' from get_sensor_threshold_response object for "
+            "sensor-ID: " + record->get_entity_id_string() + " for connection id: \'" + mConnId + "\'\n");
+        }
+        //entity[i.first] = std::round(tval * 100) / 100.0;
+        if(tval > 127)
+        {
+            uint8_t x = ((~tval) + 1);
+            entity[i.first] = x * -1.0;
+        }
+        else
+            entity[i.first] = (double) tval;
+        ///printf("%s, %s, %lu\n", i.first.c_str(), i.second.c_str(), tval);
+        tval = 0;
+    }
+    
 }
 
 IpmiSdrInfo IpmiConnectionManager::getSdrInfo() {

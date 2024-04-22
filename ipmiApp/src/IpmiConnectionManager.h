@@ -56,9 +56,12 @@ private:
     fiid_obj_t mSdrRepositoryInfoRs{nullptr};
     fiid_obj_t mGetSensorThresholdsRq{nullptr};
     fiid_obj_t mGetSensorThresholdsRs{nullptr};
+    fiid_obj_t mGetSensorHysteresisRq{nullptr};
+    fiid_obj_t mGetSensorHysteresisRs{nullptr};
     ConnectionState mConnState{ConnectionState::DISCONNECTED};
     static const std::map<std::string, std::string> mThresholdsMap;
     static const std::string mThresholdReadables [];
+    static const std::string mSensorHysteresisValues [];
 
     void createIpmiContext();
     void createSdrContext();
@@ -76,6 +79,7 @@ private:
 
     Provider::Entity readSensor(const std::shared_ptr<IpmiSensorRecComp> record);
     void getSensorThresholds(Provider::Entity &entity, const std::shared_ptr<IpmiSensorRecComp> record);
+    void getSensorHysteresis(Provider::Entity &entity, const std::shared_ptr<IpmiSensorRecComp> record);
     
 public:
     IpmiConnectionManager(const std::string &connectionid, const std::string &hostname,

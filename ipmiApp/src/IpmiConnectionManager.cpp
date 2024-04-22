@@ -13,20 +13,27 @@
 
 const std::map<std::string, std::string> IpmiConnectionManager::mThresholdsMap =
 {
-    {"LOLO", "lower_non_recoverable_threshold"},
-    {"LOW", "lower_critical_threshold"},
-    {"HIGH", "upper_critical_threshold"},
-    {"HIHI", "upper_non_recoverable_threshold"}
+    {"lower_non_recoverable_threshold", "LOLO"},
+    {"lower_critical_threshold", "LOW"},
+    {"upper_critical_threshold", "HIGH"},
+    {"upper_non_recoverable_threshold", "HIHI"}
 };
 
+/** "readable_thresholds.lower_non_critical_threshold" */
 const std::string IpmiConnectionManager::mThresholdReadables [] =
 {
-    "readable_thresholds.lower_non_critical_threshold",
-    "readable_thresholds.lower_critical_threshold",
-    "readable_thresholds.lower_non_recoverable_threshold",
-    "readable_thresholds.upper_non_critical_threshold",
-    "readable_thresholds.upper_critical_threshold",
-    "readable_thresholds.upper_non_recoverable_threshold"
+    "lower_non_critical_threshold",
+    "lower_critical_threshold",
+    "lower_non_recoverable_threshold",
+    "upper_non_critical_threshold",
+    "upper_critical_threshold",
+    "upper_non_recoverable_threshold"
+};
+
+const std::string IpmiConnectionManager::mSensorHysteresisValues [] =
+{
+    "positive_going_threshold_hysteresis_value",
+    "negative_going_threshold_hysteresis_value"
 };
 
 IpmiConnectionManager::IpmiConnectionManager(const std::string &connectionid, const std::string &hostname,
@@ -48,6 +55,8 @@ IpmiConnectionManager::IpmiConnectionManager(const std::string &connectionid, co
     mSdrRepositoryInfoRq = fiid_obj_create(tmpl_cmd_get_sdr_repository_info_rq);
     mGetSensorThresholdsRq = fiid_obj_create(tmpl_cmd_get_sensor_thresholds_rq);
     mGetSensorThresholdsRs = fiid_obj_create(tmpl_cmd_get_sensor_thresholds_rs);
+    mGetSensorHysteresisRq = fiid_obj_create(tmpl_cmd_get_sensor_hysteresis_rq);
+    mGetSensorHysteresisRs = fiid_obj_create(tmpl_cmd_get_sensor_hysteresis_rs);
 
     try
     {
@@ -517,6 +526,7 @@ Provider::Entity IpmiConnectionManager::readSensor(const std::shared_ptr<IpmiSen
             entity["VAL"] = std::round(*reading * 100.0) / 100.0;
             free(reading);
             getSensorThresholds(entity, record);
+            getSensorHysteresis(entity, record);
         }
         else
             entity["VAL"] = (double) eventMask;
@@ -571,40 +581,120 @@ void IpmiConnectionManager::getSensorThresholds(Provider::Entity &entity, const 
 
     uint64_t tval = 0;
     int thresh_readable = 0;
+    std::list<std::string> myl;
+    /** "readable_thresholds.lower_non_critical_threshold" */
     for(int i = 0; i < 6; i++)
     {
-        if(fiid_obj_get(mGetSensorThresholdsRs, mThresholdReadables[i].c_str(), &tval) < 0)
+        std::string readable = "readable_thresholds." + mThresholdReadables[i];
+        if(fiid_obj_get(mGetSensorThresholdsRs, readable.c_str(), &tval) < 0)
         {
             throw std::runtime_error("Can't get \'" + mThresholdReadables[i] +
             "\' from get_sensor_threshold_response object for "
             "sensor-ID: " + record->get_entity_id_string() + " for connection id: \'" + mConnId + "\'\n");
         }
         thresh_readable |= (tval & 0x01) << i;
+        if(tval > 0 && mThresholdsMap.find(mThresholdReadables[i]) != mThresholdsMap.end())
+        {
+            myl.push_back(mThresholdReadables[i]);
+        }
         tval = 0;
     }
-    
+
     entity["THRESHOLDS"] = thresh_readable;
 
-    for(auto &i : mThresholdsMap)
+    for(auto &i : myl)
     {
-        if(fiid_obj_get(mGetSensorThresholdsRs, i.second.c_str(), &tval) < 0)
+        if(fiid_obj_get(mGetSensorThresholdsRs, i.c_str(), &tval) < 0)
         {
-            throw std::runtime_error("Can't get \'" + i.second +
+            throw std::runtime_error("Can't get \'" + i +
             "\' from get_sensor_threshold_response object for "
             "sensor-ID: " + record->get_entity_id_string() + " for connection id: \'" + mConnId + "\'\n");
         }
         //entity[i.first] = std::round(tval * 100) / 100.0;
-        if(tval > 127)
-        {
-            uint8_t x = ((~tval) + 1);
-            entity[i.first] = x * -1.0;
-        }
-        else
-            entity[i.first] = (double) tval;
+        ///TODO: Fix this.
+        
+        ///printf("%s, %lu\n", i.c_str(), (unsigned) tval); 
+        entity[mThresholdsMap[i]] = record->scale(mSdrCtx, tval);
         ///printf("%s, %s, %lu\n", i.first.c_str(), i.second.c_str(), tval);
         tval = 0;
     }
     
+}
+
+void IpmiConnectionManager::getSensorHysteresis(Provider::Entity &entity, const std::shared_ptr<IpmiSensorRecComp> record)
+{
+    int rv = (-1);
+    
+    if((rv = fiid_obj_clear(mGetSensorHysteresisRq)) < 0) {
+        throw std::runtime_error("Can't clear get_sensor_hysteresis_request object for "
+        "sensor-ID: " + record->get_entity_id_string() + " for connection id: \'" + mConnId + "\'\n");
+    }
+    
+    if((rv = fiid_obj_clear(mGetSensorHysteresisRs)) < 0) {
+        throw std::runtime_error("Can't clear get_sensor_hysteresis_response object for "
+        "sensor-ID: " + record->get_entity_id_string() + " for connection id: \'" + mConnId + "\'\n");
+    }
+
+    if((rv = fill_cmd_get_sensor_hysteresis (record->get_sensor_number(), IPMI_SENSOR_HYSTERESIS_MASK, mGetSensorHysteresisRq)) < 0) {
+        throw std::runtime_error("Can't fill get_sensor_hysteresis_request object for "
+        "sensor-ID: " + record->get_entity_id_string() + " for connection id: \'" + mConnId + "\'\n");
+    }
+
+    /** 130 is device-access-addres (65) from Fru Device Locator Record shifted left << 1-bit*/
+    uint8_t rs_addr = (record->get_sensor_owner_id() << 1);
+    rv = ipmi_cmd_ipmb(mIpmiCtx, record->get_channel_number(), rs_addr, record->get_sensor_owner_lun(),
+    IPMI_NET_FN_SENSOR_EVENT_RQ, mGetSensorHysteresisRq, mGetSensorHysteresisRs);
+    
+    if(rv < 0)
+    {
+        int errnum = ipmi_ctx_errnum(mIpmiCtx);
+        std::string errmsg = ipmi_ctx_errormsg(mIpmiCtx);
+        throw IpmiException(errnum, std::move(errmsg));
+    }
+
+    uint64_t compCode = 0;
+    rv = fiid_obj_get(mGetSensorHysteresisRs, "comp_code", &compCode);
+
+    if(rv < 0)
+    {
+        throw std::runtime_error("Can't get completion code from get_sensor_hysteresis_response object for "
+        "sensor-ID: " + record->get_entity_id_string() + " for connection id: \'" + mConnId + "\'\n");
+    }
+    /*
+    * See table 35, Get Sensor Hysteresis Command
+    * There are two values:
+    *  + positive_going_threshold_hysteresis_value
+    *  + negative_going_threshold_hysteresis_value
+    * 
+    * But EPICS only supports one hysteresis, HYST, that is applied
+    * to both, positive/negative thresholds.
+    * 
+    * So what do we do if IPMI has different values for positive/negative?
+    * In all of the equipment that we are using so far the two positive/negative
+    * values are the same.
+    * 
+    * So I am just going to pick one and use it. positive_going_threshold_hysteresis_value
+    * it is!
+    * 
+    * TODO: Maybe figure out a way to use both and apply them based on the value of the
+    * current context.
+    */
+    uint64_t tval = 0;
+    for(auto &hyst_value : mSensorHysteresisValues)
+    {
+        if(fiid_obj_get(mGetSensorHysteresisRs, hyst_value.c_str(), &tval) < 0)
+        {
+            throw std::runtime_error("Can't get \'" + hyst_value +
+            "\' from get_sensor_hysteresis_response object for "
+            "sensor-ID: " + record->get_entity_id_string() + " for connection id: \'" + mConnId + "\'\n");
+        }
+        if(hyst_value.compare("positive_going_threshold_hysteresis_value") == 0)
+        {
+            entity["HYST"] = (double) tval;
+        }
+        tval = 0;
+    }
+
 }
 
 IpmiSdrInfo IpmiConnectionManager::getSdrInfo() {

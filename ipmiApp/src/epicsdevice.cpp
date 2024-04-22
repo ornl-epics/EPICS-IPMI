@@ -129,6 +129,7 @@ static long processAiRecord(aiRecord* rec)
     rec->lolo = ctx->entity.getField<double>("LOLO", rec->lolo);
     rec->high = ctx->entity.getField<double>("HIGH", rec->high);
     rec->hihi = ctx->entity.getField<double>("HIHI", rec->hihi);
+    rec->hyst = ctx->entity.getField<double>("HYST", rec->hyst);
     
     /** TODO: Why rval?*/
     /** rec->rval = rec->val;*/

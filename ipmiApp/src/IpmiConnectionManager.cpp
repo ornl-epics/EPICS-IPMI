@@ -581,8 +581,8 @@ void IpmiConnectionManager::getSensorThresholds(Provider::Entity &entity, const 
 
     uint64_t tval = 0;
     int thresh_readable = 0;
-    std::list<std::string> myl;
-    /** "readable_thresholds.lower_non_critical_threshold" */
+    std::list<std::string> threshold_list;
+    
     for(int i = 0; i < 6; i++)
     {
         std::string readable = "readable_thresholds." + mThresholdReadables[i];
@@ -595,14 +595,14 @@ void IpmiConnectionManager::getSensorThresholds(Provider::Entity &entity, const 
         thresh_readable |= (tval & 0x01) << i;
         if(tval > 0 && mThresholdsMap.find(mThresholdReadables[i]) != mThresholdsMap.end())
         {
-            myl.push_back(mThresholdReadables[i]);
+            threshold_list.push_back(mThresholdReadables[i]);
         }
         tval = 0;
     }
 
     entity["THRESHOLDS"] = thresh_readable;
 
-    for(auto &i : myl)
+    for(auto &i : threshold_list)
     {
         if(fiid_obj_get(mGetSensorThresholdsRs, i.c_str(), &tval) < 0)
         {
@@ -610,12 +610,17 @@ void IpmiConnectionManager::getSensorThresholds(Provider::Entity &entity, const 
             "\' from get_sensor_threshold_response object for "
             "sensor-ID: " + record->get_entity_id_string() + " for connection id: \'" + mConnId + "\'\n");
         }
-        //entity[i.first] = std::round(tval * 100) / 100.0;
-        ///TODO: Fix this.
-        
-        ///printf("%s, %lu\n", i.c_str(), (unsigned) tval); 
-        entity[mThresholdsMap[i]] = record->scale(mSdrCtx, tval);
-        ///printf("%s, %s, %lu\n", i.first.c_str(), i.second.c_str(), tval);
+        std::map<std::string, std::string>::const_iterator itr = mThresholdsMap.end();
+        itr = mThresholdsMap.find(i);
+        if(itr != mThresholdsMap.end())
+        {
+            entity[itr->second.c_str()] = record->scale(mSdrCtx, tval);
+        }
+        else
+        {
+            throw std::runtime_error("Can't find \'" + i + "\' mThresholdsMap for "
+            "sensor-ID: " + record->get_entity_id_string() + " for connection id: \'" + mConnId + "\'\n");
+        }
         tval = 0;
     }
     

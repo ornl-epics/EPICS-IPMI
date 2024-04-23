@@ -643,7 +643,7 @@ void IpmiConnectionManager::getSensorThresholds(Provider::Entity &entity, const 
             /** Thresholds are stored in raw values of multiple format types. Have to scale them.*/
             try
             {
-                entity[itr->second.c_str()] = record->scale(mSdrCtx, tval);
+                entity[itr->second.c_str()] = record->scale_threshold(mSdrCtx, tval);
             }
             catch(const std::exception& e)
             {
@@ -730,7 +730,7 @@ void IpmiConnectionManager::getSensorHysteresis(Provider::Entity &entity, const 
         }
         if(hyst_value.compare("positive_going_threshold_hysteresis_value") == 0)
         {
-            entity["HYST"] = record->scale(mSdrCtx, tval);
+            entity["HYST"] = record->scale_hysteresis(mSdrCtx, tval);
         }
         tval = 0;
     }

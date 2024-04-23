@@ -26,7 +26,8 @@ public:
     uint16_t get_record_id() const;
     uint8_t get_record_type() const;
     std::string get_device_id_string() const;
-    double scale(ipmi_sdr_ctx_t sdr, uint64_t rawVal) const;
+    double scale_threshold(ipmi_sdr_ctx_t sdr, uint64_t rawVal) const;
+    double scale_hysteresis(ipmi_sdr_ctx_t sdr, uint64_t rawVal) const;
 
 };
 

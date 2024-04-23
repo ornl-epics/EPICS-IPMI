@@ -13,10 +13,10 @@
 
 const std::map<std::string, std::string> IpmiConnectionManager::mThresholdsMap =
 {
-    {"lower_non_recoverable_threshold", "LOLO"},
-    {"lower_critical_threshold", "LOW"},
-    {"upper_critical_threshold", "HIGH"},
-    {"upper_non_recoverable_threshold", "HIHI"}
+    {"lower_critical_threshold", "LOLO"},
+    {"lower_non_critical_threshold", "LOW"},
+    {"upper_non_critical_threshold", "HIGH"},
+    {"upper_critical_threshold", "HIHI"}
 };
 
 /** "readable_thresholds.lower_non_critical_threshold" */
@@ -622,10 +622,10 @@ void IpmiConnectionManager::getSensorThresholds(Provider::Entity &entity, const 
     * + Bit 5 = upper_non_recoverable_threshold
     * 
     * But EPICS only supports four, so we are doing this:
-    * + LOLO = lower_non_recoverable_threshold
-    * + LOW = lower_critical_threshold
-    * + HIGH = upper_critical_threshold
-    * + HIHI = upper_non_recoverable_threshold
+    * + LOLO = lower_critical_threshold
+    * + LOW = lower_non_critical_threshold
+    * + HIGH = upper_non_critical_threshold
+    * + HIHI = upper_critical_threshold
     * 
     */
     for(auto &i : threshold_list)

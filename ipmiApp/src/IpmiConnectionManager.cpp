@@ -579,6 +579,12 @@ void IpmiConnectionManager::getSensorThresholds(Provider::Entity &entity, const 
         "sensor-ID: " + record->get_entity_id_string() + " for connection id: \'" + mConnId + "\'\n");
     }
 
+    /*
+    * See Table 35- Get Sensor Thresholds
+    * Byte #2 is a bit mask that indicates which thresholds are
+    * readable. Not all are. 
+    */
+
     uint64_t tval = 0;
     int thresh_readable = 0;
     std::list<std::string> threshold_list;
@@ -600,8 +606,28 @@ void IpmiConnectionManager::getSensorThresholds(Provider::Entity &entity, const 
         tval = 0;
     }
 
+    /*
+    * See Table 35- Get Sensor Thresholds
+    * Just passing the bits back to EPICS in case we need them later.
+    */
     entity["THRESHOLDS"] = thresh_readable;
 
+    /*
+    * There are 6-thresholds in the ipmi standard:
+    * + Bit 0 = lower_non_critical_threshold
+    * + Bit 1 = lower_critical_threshold
+    * + Bit 2 = lower_non_recoverable_threshold
+    * + Bit 3 = upper_non_critical_threshold
+    * + Bit 4 = upper_critical_threshold
+    * + Bit 5 = upper_non_recoverable_threshold
+    * 
+    * But EPICS only supports four, so we are doing this:
+    * + LOLO = lower_non_recoverable_threshold
+    * + LOW = lower_critical_threshold
+    * + HIGH = upper_critical_threshold
+    * + HIHI = upper_non_recoverable_threshold
+    * 
+    */
     for(auto &i : threshold_list)
     {
         if(fiid_obj_get(mGetSensorThresholdsRs, i.c_str(), &tval) < 0)
@@ -614,11 +640,20 @@ void IpmiConnectionManager::getSensorThresholds(Provider::Entity &entity, const 
         itr = mThresholdsMap.find(i);
         if(itr != mThresholdsMap.end())
         {
-            entity[itr->second.c_str()] = record->scale(mSdrCtx, tval);
+            /** Thresholds are stored in raw values of multiple format types. Have to scale them.*/
+            try
+            {
+                entity[itr->second.c_str()] = record->scale(mSdrCtx, tval);
+            }
+            catch(const std::exception& e)
+            {
+                throw std::runtime_error(std::string(e.what()) + ", for sensor-ID: " + 
+                record->get_entity_id_string() + " for connection id: \'" + mConnId + "\'\n");
+            }
         }
         else
         {
-            throw std::runtime_error("Can't find \'" + i + "\' mThresholdsMap for "
+            throw std::runtime_error("Can't find \'" + i + "\' in mThresholdsMap for "
             "sensor-ID: " + record->get_entity_id_string() + " for connection id: \'" + mConnId + "\'\n");
         }
         tval = 0;

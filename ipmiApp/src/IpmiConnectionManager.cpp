@@ -730,7 +730,7 @@ void IpmiConnectionManager::getSensorHysteresis(Provider::Entity &entity, const 
         }
         if(hyst_value.compare("positive_going_threshold_hysteresis_value") == 0)
         {
-            entity["HYST"] = (double) tval;
+            entity["HYST"] = record->scale(mSdrCtx, tval);
         }
         tval = 0;
     }

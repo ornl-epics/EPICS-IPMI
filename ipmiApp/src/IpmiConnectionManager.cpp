@@ -10,6 +10,7 @@
 #include <iostream>
 #include <cmath>
 #include <unistd.h>
+#include <iomanip>
 
 const std::map<std::string, std::string> IpmiConnectionManager::mThresholdsMap =
 {
@@ -537,6 +538,7 @@ Provider::Entity IpmiConnectionManager::readSensor(const std::shared_ptr<IpmiSen
     
     mIdleTime = epicsTime::getCurrent();
     return entity;
+
 }
 
 void IpmiConnectionManager::getSensorThresholds(Provider::Entity &entity, const std::shared_ptr<IpmiSensorRecComp> record)
@@ -643,7 +645,11 @@ void IpmiConnectionManager::getSensorThresholds(Provider::Entity &entity, const 
             /** Thresholds are stored in raw values of multiple format types. Have to scale them.*/
             try
             {
-                entity[itr->second.c_str()] = record->scale_threshold(mSdrCtx, tval);
+                std::stringstream dstr;
+                dstr << std::fixed << std::setprecision(2) << record->scale_threshold(mSdrCtx, tval);
+                double d = 0;
+                dstr >> d;
+                entity[itr->second.c_str()] = d;
             }
             catch(const std::exception& e)
             {
@@ -730,7 +736,20 @@ void IpmiConnectionManager::getSensorHysteresis(Provider::Entity &entity, const 
         }
         if(hyst_value.compare("positive_going_threshold_hysteresis_value") == 0)
         {
-            entity["HYST"] = record->scale_hysteresis(mSdrCtx, tval);
+            try
+            {
+                ///entity["HYST"] = record->scale_hysteresis(mSdrCtx, tval);
+                std::stringstream dstr;
+                dstr << std::fixed << std::setprecision(2) << record->scale_threshold(mSdrCtx, tval);
+                double d = 0;
+                dstr >> d;
+                entity["HYST"] = fabs(d);
+            }
+            catch(const std::exception& e)
+            {
+                throw std::runtime_error(std::string(e.what()) + ", for sensor-ID: " + 
+                record->get_entity_id_string() + " for connection id: \'" + mConnId + "\'\n");
+            }
         }
         tval = 0;
     }

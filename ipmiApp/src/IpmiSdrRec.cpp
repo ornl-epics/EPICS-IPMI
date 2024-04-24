@@ -7,6 +7,7 @@
 
 #include "IpmiSdrRec.h"
 #include <stdexcept>
+#include <cmath>
 
 IpmiSdrRec::IpmiSdrRec(uint16_t record_id, uint8_t record_type)
     :record_id(record_id), record_type(record_type)
@@ -67,39 +68,60 @@ double IpmiSdrRec::scale_threshold(ipmi_sdr_ctx_t sdr, uint64_t rawVal) const
 
     double result = 0;
 
-    if(analog_data_format == IPMI_SDR_ANALOG_DATA_FORMAT_UNSIGNED)
-    {
+    if (analog_data_format == IPMI_SDR_ANALOG_DATA_FORMAT_UNSIGNED)
         result = (double) rawVal;
-    }
-    else if(analog_data_format == IPMI_SDR_ANALOG_DATA_FORMAT_1S_COMPLEMENT)
+    else if (analog_data_format == IPMI_SDR_ANALOG_DATA_FORMAT_1S_COMPLEMENT)
     {
-        /* we don't support this type yet.*/
-        throw std::runtime_error("Can't scale threshold because analog data type read from SDR is 1s-complement");
+        if (rawVal & 0x80)
+            rawVal++;
+        result = (double)((char) rawVal);
     }
-    else if(analog_data_format == IPMI_SDR_ANALOG_DATA_FORMAT_2S_COMPLEMENT)
+    else /* analog_data_format == IPMI_SDR_ANALOG_DATA_FORMAT_2S_COMPLEMENT */
+        result = (double)((char) rawVal);
+
+    result *= (double) m;
+    result += (b * pow (10, b_exponent));
+    result *= pow (10, r_exponent);
+
+    switch (linearization)
     {
-        /* Is the value negative or positive. Check the sign bit.*/
-        const uint8_t SIGN_BIT = 0x80;
-        if(rawVal & SIGN_BIT)
-        {
-            uint8_t x = ((~rawVal) + 1);
-            result = x * (-1.0);
-        }
-        else
-            result = rawVal;
-    }
-    else if(analog_data_format == IPMI_SDR_ANALOG_DATA_FORMAT_NOT_ANALOG)
-    {
-        /* Not sure what to do with this one. Nothing?*/
-        throw std::runtime_error("Can't scale threshold because analog data type in SDR is not analog (numeric) reading");
-    }
-    else
-    {
-        /* Not sure what to do with this one. Nothing?*/
-        throw std::runtime_error("Can't scale threshold because of unrecognized analog data type format");
+        case IPMI_SDR_LINEARIZATION_LN:
+        result = log (result);
+        break;
+        case IPMI_SDR_LINEARIZATION_LOG10:
+        result = log10 (result);
+        break;
+        case IPMI_SDR_LINEARIZATION_LOG2:
+        result = log2 (result);
+        break;
+        case IPMI_SDR_LINEARIZATION_E:
+        result = exp (result);
+        break;
+        case IPMI_SDR_LINEARIZATION_EXP10:
+        result = exp10 (result);
+        break;
+        case IPMI_SDR_LINEARIZATION_EXP2:
+        result = exp2 (result);
+        break;
+        case IPMI_SDR_LINEARIZATION_INVERSE:
+        if (result != 0.0)
+            result = 1.0 / result;
+        break;
+        case IPMI_SDR_LINEARIZATION_SQR:
+        result = pow (result, 2.0);
+        break;
+        case IPMI_SDR_LINEARIZATION_CUBE:
+        result = pow (result, 3.0);
+        break;
+        case IPMI_SDR_LINEARIZATION_SQRT:
+        result = sqrt (result);
+        break;
+        case IPMI_SDR_LINEARIZATION_CUBERT:
+        result = cbrt (result);
+        break;
     }
     
-    return result * m + b;
+    return result;
 }
 
 ///TODO: Combine the two scaling functions into a single local function.

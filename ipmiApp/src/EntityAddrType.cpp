@@ -10,15 +10,18 @@
 
 auto isSensor = [](EntityAddrType::Type t) {return t == EntityAddrType::Type::SENSOR;};
 auto isPicmgLed = [](EntityAddrType::Type t) {return t == EntityAddrType::Type::PICMG_LED;};
+auto isOemCmd = [](EntityAddrType::Type t) {return t == EntityAddrType::Type::OEM_CMD;};
 
-constexpr const char* getEntAddrTypeStr(EntityAddrType::Type t) {
+constexpr const char* getEntAddrTypeStr(EntityAddrType::Type t)
+{
     switch (t)
     {
-    case EntityAddrType::Type::SENSOR: return "Sensor";
-    case EntityAddrType::Type::PICMG_LED: return "PICMG_LED";
-    case EntityAddrType::Type::FRU: return "FRU";
-    default:
-        throw std::runtime_error("ERROR! getEntAddrTypeStr was called but passed an invalid enumeration \'" + std::to_string((int) t) + "\'");
+        case EntityAddrType::Type::SENSOR: return "Sensor";
+        case EntityAddrType::Type::PICMG_LED: return "PICMG_LED";
+        case EntityAddrType::Type::FRU: return "FRU";
+        case EntityAddrType::Type::OEM_CMD: return "OEM_CMD";
+        default:
+            throw std::runtime_error("ERROR! getEntAddrTypeStr was called but passed an invalid enumeration \'" + std::to_string((int) t) + "\'");
     }
 }
 
@@ -33,42 +36,60 @@ EntityAddrType::EntityAddrType(const std::string &recInOutString)
 
 }
 
-EntityAddrType::~EntityAddrType() {
+EntityAddrType::~EntityAddrType()
+{
 }
 
-const std::string &EntityAddrType::getConnectionId() const {
-    return this->mConnectionId;
+const std::string &EntityAddrType::getConnectionId() const
+{
+    return mConnectionId;
 }
 
-EntityAddrType::Type EntityAddrType::getEntityAddressType() const {
-    return this->mAddrType;
+EntityAddrType::Type EntityAddrType::getEntityAddressType() const
+{
+    return mAddrType;
 }
 
-const std::string EntityAddrType::getEntityAddressTypeAsString() const {
-    return getEntAddrTypeStr(this->mAddrType);
+const std::string EntityAddrType::getEntityAddressTypeAsString() const
+{
+    return getEntAddrTypeStr(mAddrType);
 }
 
-std::pair<uint8_t, bool> EntityAddrType::getSensorEntityId() const {
-    return std::make_pair(this->mSensorEntityId, isSensor(this->mAddrType));
-}
-std::pair<uint8_t, bool> EntityAddrType::getSensorEntityInstance() const {
-    return std::make_pair(this->mSensorEntityInstance, isSensor(this->mAddrType));
-}
-std::pair<const std::string &, bool> EntityAddrType::getSensorIdString() const {
-    return std::make_pair(this->mSensorIdString, isSensor(this->mAddrType));
+std::pair<uint8_t, bool> EntityAddrType::getSensorEntityId() const
+{
+    return std::make_pair(mSensorEntityId, isSensor(mAddrType));
 }
 
-std::pair<uint8_t, bool> EntityAddrType::getPicmgLedFruDeviceSlaveSddress() const {
-    return std::make_pair(this->mLogicalFruDeviceSlaveSddress, isPicmgLed(this->mAddrType));
-}
-std::pair<uint8_t, bool> EntityAddrType::getPicmgLedId() const {
-    return std::make_pair(this->mLedId, isPicmgLed(this->mAddrType));
+std::pair<uint8_t, bool> EntityAddrType::getSensorEntityInstance() const
+{
+    return std::make_pair(mSensorEntityInstance, isSensor(mAddrType));
 }
 
-const std::string EntityAddrType::getSensorIdAsKey() const {
-    return std::to_string(this->mSensorEntityId) + ":"
-    + std::to_string(this->mSensorEntityInstance) + ":"
-    + this->mSensorIdString;
+std::pair<const std::string &, bool> EntityAddrType::getSensorIdString() const
+{
+    return std::make_pair(mSensorIdString, isSensor(mAddrType));
+}
+
+std::pair<uint8_t, bool> EntityAddrType::getPicmgLedFruDeviceSlaveSddress() const
+{
+    return std::make_pair(mLogicalFruDeviceSlaveSddress, isPicmgLed(mAddrType));
+}
+
+std::pair<uint8_t, bool> EntityAddrType::getPicmgLedId() const
+{
+    return std::make_pair(mLedId, isPicmgLed(mAddrType));
+}
+
+const std::string EntityAddrType::getSensorIdAsKey() const
+{
+    return std::to_string(mSensorEntityId) + ":"
+    + std::to_string(mSensorEntityInstance) + ":"
+    + mSensorIdString;
+}
+
+std::tuple<const std::string, const std::string> EntityAddrType::get_oem_command() const
+{
+    return std::make_tuple(mVendorId, mVendorCmd);
 }
 
 void EntityAddrType::parseInOutString(const std::string &link) {
@@ -90,6 +111,7 @@ void EntityAddrType::parseInOutString(const std::string &link) {
 
     std::regex re_sensor ("([a-zA-Z0-9]+) ([sS][eE][nN][sS][oO][rR]) *([0-9]+) *: *([0-9]+) *\'(.*)\'");
     std::regex re_picmg_led("([a-zA-Z0-9]+) ([pP][iI][cC][mM][gG]_[lL][eE][dD]) *([0-9]+) *: *([0-9]+)");
+    std::regex re_oem_cmd ("^([a-zA-Z0-9]+)\\s+OEM_CMD\\s+([a-zA-Z0-9]+)\\s+([a-zA-Z0-9]+)\\s*$");
     std::smatch re_m;
 
     /**
@@ -101,27 +123,43 @@ void EntityAddrType::parseInOutString(const std::string &link) {
     */
 
     /* Do we have SID? */
-    if(std::regex_match(link, re_m, re_sensor)) {
-        this->mConnectionId = re_m[1];
-        this->mAddrType = Type::SENSOR; ///re_m[2];
-        this->mSensorEntityId = (std::stoul(re_m[3]) & 0xFF);
-        this->mSensorEntityInstance = (std::stoul(re_m[4]) & 0xFF);
+    if(std::regex_match(link, re_m, re_sensor))
+    {
+        mConnectionId = re_m[1];
+        mAddrType = Type::SENSOR; ///re_m[2];
+        mSensorEntityId = (std::stoul(re_m[3]) & 0xFF);
+        mSensorEntityInstance = (std::stoul(re_m[4]) & 0xFF);
 
         /** The quotes were only used to keep whitespace characters that
          *  are unknowingly at the end of the strings... Take them off
          *  now and preserve those whitespace characters.
         */
-        for(auto &ch : re_m[5].str()) {
+        for(auto &ch : re_m[5].str())
+        {
             if(ch != '\'')
-                this->mSensorIdString.push_back(ch);
+                mSensorIdString.push_back(ch);
         }
     }
-    else if(std::regex_match(link, re_m, re_picmg_led)) {
-        this->mConnectionId = re_m[1];
-        this->mAddrType = Type::PICMG_LED; ///re_m[2];
-        this->mLogicalFruDeviceSlaveSddress = (std::stoul(re_m[3]) & 0xFF);
-        this->mLedId = (std::stoul(re_m[4]) & 0xFF);
+    else if(std::regex_match(link, re_m, re_picmg_led))
+    {
+        mConnectionId = re_m[1];
+        mAddrType = Type::PICMG_LED; ///re_m[2];
+        mLogicalFruDeviceSlaveSddress = (std::stoul(re_m[3]) & 0xFF);
+        mLedId = (std::stoul(re_m[4]) & 0xFF);
     }
+    else if (std::regex_match(link, re_m, re_oem_cmd))
+    {
+        mAddrType = Type::OEM_CMD;
+        mConnectionId = re_m[1].str();
+        mVendorId = re_m[2].str();
+        mVendorCmd = re_m[3].str();
+
+        /* Make'em lowercase.*/
+        std::transform(mVendorId.begin(), mVendorId.end(), mVendorId.begin(), ::tolower);
+        std::transform(mVendorCmd.begin(), mVendorCmd.end(), mVendorCmd.begin(), ::tolower);
+
+    }
+    
     else {  /* Something is wrong. Throw now! */
         throw std::invalid_argument("Link field does not contain proper arguments. \'" + link + "\'");
     }

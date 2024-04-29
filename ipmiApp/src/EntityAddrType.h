@@ -9,6 +9,7 @@
 
 #include <string>
 #include <map>
+#include <tuple>
 
 class EntityAddrType {
 
@@ -17,6 +18,7 @@ public:
         SENSOR,
         FRU,
         PICMG_LED,
+        OEM_CMD
     };
 
 private:
@@ -29,6 +31,9 @@ private:
 
     uint8_t mLogicalFruDeviceSlaveSddress;
     uint8_t mLedId;
+
+    std::string mVendorId;
+    std::string mVendorCmd;
 
     void parseInOutString(const std::string &link);
 public:
@@ -46,6 +51,8 @@ public:
 
     std::pair<uint8_t, bool> getPicmgLedFruDeviceSlaveSddress() const;
     std::pair<uint8_t, bool> getPicmgLedId() const;
+
+    std::tuple<const std::string, const std::string> get_oem_command() const;
 
 };
 

@@ -19,6 +19,7 @@
 #include <iostream>
 #include <sstream>
 #include <regex>
+#include <tuple>
 
 // EPICS records that we support
 #include <aiRecord.h>
@@ -28,65 +29,6 @@ namespace dispatcher {
 
 static std::map<std::string, std::shared_ptr<FreeIpmiProvider>> g_connections; //!< Global map of connections.
 static epicsMutex g_mutex; //!< Global mutex to protect g_connections.
-
-/// @brief Split string and place tokens into map
-/// @param argmap 
-/// @param link Field of EPICS record.
-static void parse_inout_str(std::map<std::string, std::string> &argMap, const std::string &link) {
-
-    /** 
-     * We are looking for inout string signatures like the following:
-     * Device-Name SENSOR Entity-Id:Entity-Instance 'Sensor-Id-String'
-     * Example-1: @vt811 SENSOR 30:97 'CU TEMP1'
-     * Example-2: @vt811 SENSOR 29:97 'FAN1'
-     * Note: id-strings must be srurrounded in single quotes and can
-     * contain spaces. This is slightly annoying,
-     * because on a VadaTech device, while reading the SDR, one device
-     * id-string come back with a space at the end of the string. EPICS
-     * trims this off the inout string automatically. So to make it work
-     * you will have to wrap your string with single quotes if they have
-     * spaces at the end.
-     * E.g., "@vt811 F5 SID 'VT BIOS POST '"
-    */
-
-    std::regex re_sensor ("([a-zA-Z0-9]+) ([sS][eE][nN][sS][oO][rR]) *([0-9]+) *: *([0-9]+) *\'(.*)\'");
-    std::regex re_picmg_led("([a-zA-Z0-9]+) ([pP][iI][cC][mM][gG]_[lL][eE][dD]) *([0-9]+) *: *([0-9]+)");
-    std::smatch re_m;
-
-    /**
-     * cid = connection ID
-     * type = object type: sensor, led, etc.
-     * et = entity type
-     * ei = entity instance
-     * sid = sensor id-string
-    */
-
-    /* Do we have SID? */
-    if(std::regex_match(link, re_m, re_sensor)) {
-        argMap["cid"] = re_m[1];
-        argMap["type"] = re_m[2];
-        argMap["et"] = re_m[3];
-        argMap["ei"] = re_m[4];
-
-        /** The quotes were only used to keep whitespace characters that
-         *  are unknowingly at the end of the strings... Take them off
-         *  now and preserve those whitespace characters.
-        */
-        for(auto &ch : re_m[5].str()) {
-            if(ch != '\'')
-                argMap["sid"].push_back(ch);
-        }
-    }
-    else if(std::regex_match(link, re_m, re_picmg_led)) {
-        argMap["cid"] = re_m[1];
-        argMap["type"] = re_m[2];
-        argMap["fru_id"] = re_m[3];
-        argMap["led_id"] = re_m[4];
-    }
-    else {  /* Something is wrong. Throw now! */
-        throw std::invalid_argument("Link field does not contain proper arguments. \'" + link + "\'");
-    }
-}
 
 static std::shared_ptr<FreeIpmiProvider> _getConnection(const std::string& conn_id)
 {
@@ -125,10 +67,12 @@ bool connect(const std::string& conn_id, const std::string& hostname,
     return true;
 }
 
-std::shared_ptr<FreeIpmiProvider> checkEntityAddressType(const std::shared_ptr<EntityAddrType> entAddrType) {
+std::shared_ptr<FreeIpmiProvider> checkEntityAddressType(const std::shared_ptr<EntityAddrType> entAddrType)
+{
     
     /** First verify that the Entity Address and Type object is good to go.*/
-    if(!entAddrType) {
+    if(!entAddrType)
+    {
         throw std::runtime_error("EntityAddrType object derrived from record link field is null.");
     }
 
@@ -140,40 +84,62 @@ std::shared_ptr<FreeIpmiProvider> checkEntityAddressType(const std::shared_ptr<E
     /** What type is the Entity Address? */
     const EntityAddrType::Type addressType = entAddrType->getEntityAddressType();
 
-    switch (addressType) {
-    case EntityAddrType::Type::SENSOR:
+    switch (addressType)
     {
-        std::shared_ptr<IpmiSensorRecComp> sp (nullptr);
-        const std::string key = entAddrType->getSensorIdAsKey();
-        sp = conn->findSensorByMapKey(key);
-        if(!sp) {
-            throw std::runtime_error("Could not find sensor in map by key \'" + key + "\'");
-        }
-    }
-        break;
-
-    case EntityAddrType::Type::PICMG_LED:
-    {
-        std::shared_ptr<PicmgLed> led = nullptr;
-        std::pair<uint8_t, bool> fruId = entAddrType->getPicmgLedFruDeviceSlaveSddress();
-        std::pair<uint8_t, bool> ledId = {0,false};
-        if(fruId.second) {
-            ledId = entAddrType->getPicmgLedId();
-            if(ledId.second) {
-                led = conn->getPicmgLedByAddress(fruId.first, ledId.first);
+        /*
+        * Note: opening and closing braces are needed for each case block that initializes
+        * variables. Otherwise you have to move the variable declarations for all cases outside
+        * of the switch block.
+        */
+        case EntityAddrType::Type::SENSOR:
+        {
+            std::shared_ptr<IpmiSensorRecComp> sp (nullptr);
+            const std::string key = entAddrType->getSensorIdAsKey();
+            sp = conn->findSensorByMapKey(key);
+            if(!sp)
+            {
+                throw std::runtime_error("Could not find sensor in map by key \'" + key + "\'");
             }
-        }
-        
-        if(!led) {
-            throw std::runtime_error("Could not find PICMG_LED by FRU-ID \'" + std::to_string(fruId.first) +
-            "\' and LED-ID \'" + std::to_string(ledId.first) + "\' in record link field.");
-        }
-    }
-        break;
 
-    default:
-        throw std::runtime_error("Could not find sensor in map by key \'" + entAddrType->getEntityAddressTypeAsString() + "\'");
-        break;
+            break;
+        }
+        case EntityAddrType::Type::PICMG_LED:
+        {
+            std::shared_ptr<PicmgLed> led = nullptr;
+            std::pair<uint8_t, bool> fruId = entAddrType->getPicmgLedFruDeviceSlaveSddress();
+            std::pair<uint8_t, bool> ledId = {0,false};
+            if(fruId.second)
+            {
+                ledId = entAddrType->getPicmgLedId();
+                if(ledId.second)
+                {
+                    led = conn->getPicmgLedByAddress(fruId.first, ledId.first);
+                }
+            }
+            
+            if(!led)
+            {
+                throw std::runtime_error("Could not find PICMG_LED by FRU-ID \'" + std::to_string(fruId.first) +
+                "\' and LED-ID \'" + std::to_string(ledId.first) + "\' in record link field.");
+            }
+        
+            break;
+        }
+        case EntityAddrType::Type::OEM_CMD:
+        {
+            std::string vid;
+            std::string vcmd;
+            std::tie(vid, vcmd) = entAddrType->get_oem_command();
+            if(!conn->is_valid_oem_cmd(vid, vcmd))
+            {
+                throw std::runtime_error("Invalid OEM ID: \'" + vid +"\', and Command: \'" + vcmd + "\'\n");
+            }
+            break;
+        }
+
+        default:
+            throw std::runtime_error("Could not find sensor in map by key \'" + entAddrType->getEntityAddressTypeAsString() + "\'");
+            break;
     }
 
     return conn;
@@ -196,6 +162,13 @@ bool scheduleGet(const std::shared_ptr<EntityAddrType> entAddrType, const std::f
     auto conn = checkEntityAddressType(entAddrType);
     return conn->schedule( Provider::Task(entAddrType, cb, entity) );
     
+}
+
+bool scheduleWrite(const std::shared_ptr<EntityAddrType> entAddrType, const std::function<void()>& cb, Provider::Entity& entity)
+{
+    /** First verify that the Entity Address and Type object is good to go.*/
+    auto conn = checkEntityAddressType(entAddrType);
+    return conn->scheduleWrite( Provider::Task(entAddrType, cb, entity) );
 }
 
 }; // namespace dispatcher

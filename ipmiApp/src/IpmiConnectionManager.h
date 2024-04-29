@@ -7,6 +7,8 @@
 #include <filesystem>
 #include <string>
 #include <cstdint>
+#include <map>
+#include <list>
 #include <freeipmi/freeipmi.h>
 #include <epicsTime.h>
 #include "common.h"
@@ -62,6 +64,9 @@ private:
     static const std::map<std::string, std::string> mThresholdsMap;
     static const std::string mThresholdReadables [];
     static const std::string mSensorHysteresisValues [];
+    typedef int (*OEM_CALLBACK)(ipmi_ctx_t);
+    
+    static std::map<std::list<std::string>, std::map<std::string, OEM_CALLBACK>> oem_cmds;
 
     void createIpmiContext();
     void createSdrContext();
@@ -80,6 +85,7 @@ private:
     Provider::Entity readSensor(const std::shared_ptr<IpmiSensorRecComp> record);
     void getSensorThresholds(Provider::Entity &entity, const std::shared_ptr<IpmiSensorRecComp> record);
     void getSensorHysteresis(Provider::Entity &entity, const std::shared_ptr<IpmiSensorRecComp> record);
+    static int vadatech_reboot(ipmi_ctx_t ctx);
     
 public:
     IpmiConnectionManager(const std::string &connectionid, const std::string &hostname,
@@ -95,10 +101,11 @@ public:
     void process();
 
     Provider::Entity getSensorReading(const std::shared_ptr<IpmiSensorRecComp> record);
+    void write_oem_command(const std::string &connectionId, const std::string vendorId, const std::string command);
+    static bool is_valid_oem_command(const std::string &vendor_id, const std::string &command);
     
     IpmiSdrInfo getSdrInfo();
     void rebuildSdrCache();
-
     
     
 };

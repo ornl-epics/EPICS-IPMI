@@ -45,6 +45,12 @@ class Provider {
                     }
                     return default_;
                 }
+                
+                bool hasField(const std::string& field)
+                {
+                    auto it = find(field);
+                    return (it != end());
+                }
         };
         struct Task {
             std::shared_ptr<EntityAddrType> entAddrTyp;
@@ -79,6 +85,7 @@ class Provider {
          * @return true if succesfully scheduled and will invoke record post-processing
          */
         bool schedule(const Task&& task);
+        bool scheduleWrite(const Task&& task);
 
         /**
          * @brief Thread processing enqueued tasks
@@ -111,6 +118,7 @@ class Provider {
          * @return current value
          */
         virtual Entity getEntityValue(const std::shared_ptr<EntityAddrType> entAddrType) = 0;
+        virtual void write_oem_command(const std::shared_ptr<EntityAddrType> entAddrType) = 0;
         
         virtual void process() = 0;
 

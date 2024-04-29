@@ -64,6 +64,16 @@ bool Provider::schedule(const Task&& task)
     return true;
 }
 
+bool Provider::scheduleWrite(const Task&& task)
+{
+    if(task.entAddrTyp->getEntityAddressType() == EntityAddrType::Type::OEM_CMD)
+    {
+        write_oem_command(task.entAddrTyp);
+        return true;
+    }
+    return false;
+}
+
 void Provider::tasksThread()
 {
     while (m_tasks.processing) {

@@ -13,6 +13,7 @@
 #include <sstream>
 #include "IpmiException.h"
 
+
 FreeIpmiProvider::FreeIpmiProvider(const std::string& conn_id, const std::string& hostname,
                                    const std::string& username, const std::string& password,
                                    const std::string& authtype, const std::string& protocol,
@@ -34,6 +35,11 @@ FreeIpmiProvider::~FreeIpmiProvider()
 {
     if (stopThread() == false)
         LOG_WARN("Processing thread did not stop");
+}
+
+bool FreeIpmiProvider::is_valid_oem_cmd(const std::string &vendor_id, const std::string &command)
+{
+    return mConnManager->is_valid_oem_command(vendor_id, command);
 }
 
 FreeIpmiProvider::Entity FreeIpmiProvider::getEntityValue(const std::shared_ptr<EntityAddrType> entAddrType) {
@@ -63,6 +69,15 @@ FreeIpmiProvider::Entity FreeIpmiProvider::getEntityValue(const std::shared_ptr<
     }
 
     return entity;
+}
+
+void FreeIpmiProvider::write_oem_command(const std::shared_ptr<EntityAddrType> entAddrType)
+{
+    std::string vid;
+    std::string vcmd;
+    std::tie(vid, vcmd) = entAddrType->get_oem_command();
+    mConnManager->write_oem_command(entAddrType->getConnectionId(), vid, vcmd);
+
 }
 
 FreeIpmiProvider::Entity FreeIpmiProvider::getPicmgLedReading(const std::shared_ptr<EntityAddrType> entAddrType) {

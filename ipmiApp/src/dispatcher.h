@@ -75,5 +75,6 @@ bool process(T* rec);
 
 ///bool scheduleGet(const std::string& address, const std::function<void()>& cb, Provider::Entity& entity);
 bool scheduleGet(const std::shared_ptr<EntityAddrType> entAddrType, const std::function<void()>& cb, Provider::Entity& entity);
+bool scheduleWrite(const std::shared_ptr<EntityAddrType> entAddrType, const std::function<void()>& cb, Provider::Entity& entity);
 
 }; // namespace

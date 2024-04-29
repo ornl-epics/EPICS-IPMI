@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <iomanip>
 
+
 const std::map<std::string, std::string> IpmiConnectionManager::mThresholdsMap =
 {
     {"lower_critical_threshold", "LOLO"},
@@ -36,6 +37,32 @@ const std::string IpmiConnectionManager::mSensorHysteresisValues [] =
     "positive_going_threshold_hysteresis_value",
     "negative_going_threshold_hysteresis_value"
 };
+
+//typedef int (*OEM_CALLBACK)(ipmi_ctx_t);
+std::map<std::list<std::string>, std::map<std::string, IpmiConnectionManager::OEM_CALLBACK>> IpmiConnectionManager::oem_cmds = {
+    /** Format is {vendor-ids[]}, {cmd-name, callback}*/
+    { {{"vadatech"},{"vt"}}, {{"reboot",&IpmiConnectionManager::vadatech_reboot}} }
+};
+
+
+int IpmiConnectionManager::vadatech_reboot(ipmi_ctx_t ctx)
+{
+    printf("++++ In function vadatech_reboot\n");
+    if(false)
+    {
+        uint8_t buf_rq [] = {0x9E, 0x00, 0xFF, 0xFF};
+        uint8_t buf_rs [100] = {0};
+        printf("Sending power cycle command now.\n");
+        int z = ipmi_cmd_raw_ipmb (ctx, IPMI_CHANNEL_NUMBER_PRIMARY_IPMB, 0x82, 0x00, IPMI_NET_FN_OEM_GROUP_RQ,
+                        &buf_rq,
+                        sizeof(buf_rq),
+                        &buf_rs,
+                        sizeof(buf_rs));
+        printf("Return value from ipmi_cmd_raw_ipmb: %i\n", z);
+    }
+
+    return 0;
+}
 
 IpmiConnectionManager::IpmiConnectionManager(const std::string &connectionid, const std::string &hostname,
     const std::string &username, const std::string &password,
@@ -457,6 +484,53 @@ Provider::Entity IpmiConnectionManager::getSensorReading(const std::shared_ptr<I
     
 }
 
+/*
+* std::map<std::list<std::string>, std::map<std::string, int>> IpmiConnectionManager::oem_cmds = {
+*    { {{"vadatech"},{"vt"}}, {{"reboot",-1}} }
+*};
+*/
+void IpmiConnectionManager::write_oem_command(const std::string &connectionId, const std::string vendorId, const std::string command)
+{
+
+    for(auto &key_value : IpmiConnectionManager::oem_cmds)
+    {
+        auto vendor = std::find(key_value.first.begin(), key_value.first.end(), vendorId);
+        if(vendor != key_value.first.end())
+        {
+            auto cmd = key_value.second.find(command);
+            if(cmd != key_value.second.end())
+            {
+                printf("+++ Calling the function pointer!\n");
+                cmd->second(this->mIpmiCtx);
+                return true;
+            }
+        }
+    }
+
+}
+
+bool IpmiConnectionManager::is_valid_oem_command(const std::string &vendor_id, const std::string &command)
+{
+     /** Walk thru the map of vendor-ids and vendor-commands.*/
+    for(auto &key_value : IpmiConnectionManager::oem_cmds)
+    {
+        /** See if the vendor name/id/alias is in the supported OEM commands list.
+         *  first is a list of names/aliases.
+        */
+        auto vendor = std::find(key_value.first.begin(), key_value.first.end(), vendor_id);
+        if(vendor != key_value.first.end())
+        {
+            /** See if the vendor command is in the supported OEM commands list.*/
+            auto cmd = key_value.second.find(command);
+            if(cmd != key_value.second.end())
+            {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 Provider::Entity IpmiConnectionManager::readSensor(const std::shared_ptr<IpmiSensorRecComp> record) {
     
     if(mConnState != ConnectionState::CONNECTED) {
@@ -612,7 +686,7 @@ void IpmiConnectionManager::getSensorThresholds(Provider::Entity &entity, const 
     * See Table 35- Get Sensor Thresholds
     * Just passing the bits back to EPICS in case we need them later.
     */
-    entity["THRESHOLDS"] = thresh_readable;
+    entity["THRESHOLDS_READABLE"] = thresh_readable;
 
     /*
     * There are 6-thresholds in the ipmi standard:
@@ -638,8 +712,8 @@ void IpmiConnectionManager::getSensorThresholds(Provider::Entity &entity, const 
             "\' from get_sensor_threshold_response object for "
             "sensor-ID: " + record->get_entity_id_string() + " for connection id: \'" + mConnId + "\'\n");
         }
-        std::map<std::string, std::string>::const_iterator itr = mThresholdsMap.end();
-        itr = mThresholdsMap.find(i);
+        
+        auto itr = mThresholdsMap.find(i);
         if(itr != mThresholdsMap.end())
         {
             /** Thresholds are stored in raw values of multiple format types. Have to scale them.*/

@@ -155,7 +155,6 @@ static long processAiRecord(aiRecord* rec)
 
 static long initBoRecord(boRecord* rec)
 {
-    printf("++++ Init Record ++++\n");
     void *buffer = callocMustSucceed(1, sizeof(IpmiRecord), "ipmi::initGeneric");
     rec->dpvt = new (buffer) IpmiRecord;
 
@@ -175,15 +174,18 @@ static long initBoRecord(boRecord* rec)
         LOG_ERROR("Record Init \'" + std::string(rec->name) + "\': " + e.what() + '\n');
         return -1;
     }
-    return 0;
 
+    rec->rval = 0;
+    return 0;
 }
 
 static long processBoRecord(boRecord* rec)
 {
+    
     IpmiRecord *ctx = reinterpret_cast<IpmiRecord*>(rec->dpvt);
     
-    if (ctx == nullptr) {
+    if (ctx == nullptr)
+    {
         /** Something did not go right in record-init*/
         // Keep PACT=1 to prevent further processing
         rec->pact = 1;
@@ -195,7 +197,8 @@ static long processBoRecord(boRecord* rec)
      *  which kept the entityAddrType from getting created.
      *  Let's try to get the entityAddrType again and recover.
     */
-    if(ctx->entAddrType == nullptr) {
+    if(ctx->entAddrType == nullptr)
+    {
         std::shared_ptr<EntityAddrType> eaddrt = nullptr;
         try
         {
@@ -211,31 +214,34 @@ static long processBoRecord(boRecord* rec)
         }
     }
     
-    if (rec->pact == 0) {
-        rec->pact = 1;
-
-        std::function<void()> cb = std::bind(callbackRequestProcessCallback, &ctx->callback, rec->prio, rec);
-
-        try
+    if(rec->val > 0 && rec->oraw < 1)
+    {
+        if (rec->pact == 0)
         {
-            dispatcher::scheduleWrite(ctx->entAddrType, cb, ctx->entity);
-        }
-        catch(const std::exception& e)
-        {
-            LOG_ERROR("Record Process \'" + std::string(rec->name) + "\': " + e.what() + '\n');
-            recGblSetSevr(rec, epicsAlarmUDF, epicsSevInvalid);
+            rec->pact = 1;
+            std::function<void()> cb = std::bind(callbackRequestProcessCallback, &ctx->callback, rec->prio, rec);
+            try
+            {
+                ///TODO: I am not sure if we are going to need a callback or not. But for now we use it.
+                /// Currently, the only ouput is a reboot command that doed not return anything.
+                dispatcher::scheduleWrite(ctx->entAddrType, cb, ctx->entity);
+            }
+            catch(const std::exception& e)
+            {
+                LOG_ERROR("Record Process \'" + std::string(rec->name) + "\': " + e.what() + '\n');
+                recGblSetSevr(rec, epicsAlarmUDF, epicsSevInvalid);
 
-            /** Try again, next time around*/
-            rec->pact = 0;
-            return -1;
+                /** Try again, next time around*/
+                rec->pact = 0;
+                return -1;
+            }
+            return 0;
         }
-
-        return 0;
     }
+        
 
     // This is the second pass, we got new value now update the record
     rec->pact = 0;
-
 
     return 0;
 }

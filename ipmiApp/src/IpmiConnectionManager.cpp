@@ -47,21 +47,15 @@ std::map<std::list<std::string>, std::map<std::string, IpmiConnectionManager::OE
 
 int IpmiConnectionManager::vadatech_reboot(ipmi_ctx_t ctx)
 {
-    printf("++++ In function vadatech_reboot\n");
-    if(false)
-    {
-        uint8_t buf_rq [] = {0x9E, 0x00, 0xFF, 0xFF};
-        uint8_t buf_rs [100] = {0};
-        printf("Sending power cycle command now.\n");
-        int z = ipmi_cmd_raw_ipmb (ctx, IPMI_CHANNEL_NUMBER_PRIMARY_IPMB, 0x82, 0x00, IPMI_NET_FN_OEM_GROUP_RQ,
-                        &buf_rq,
-                        sizeof(buf_rq),
-                        &buf_rs,
-                        sizeof(buf_rs));
-        printf("Return value from ipmi_cmd_raw_ipmb: %i\n", z);
-    }
+    uint8_t buf_rq [] = {0x9E, 0x00, 0xFF, 0xFF};
+    uint8_t buf_rs [100] = {0};
+    int rval = ipmi_cmd_raw_ipmb (ctx, IPMI_CHANNEL_NUMBER_PRIMARY_IPMB, 0x82, 0x00, IPMI_NET_FN_OEM_GROUP_RQ,
+                    &buf_rq,
+                    sizeof(buf_rq),
+                    &buf_rs,
+                    sizeof(buf_rs));
 
-    return 0;
+    return rval;
 }
 
 IpmiConnectionManager::IpmiConnectionManager(const std::string &connectionid, const std::string &hostname,
@@ -364,7 +358,7 @@ const std::string &IpmiConnectionManager::getHostname() const {
 void IpmiConnectionManager::process() {
 
     if(mConnState == ConnectionState::CONNECTED) {
-        epicsTime now = mIdleTime + ((mSessionTimeout/1000)/4);
+        epicsTime now = mIdleTime + ((mSessionTimeout/1000)/2);
         if(epicsTime::getCurrent() > now) {
             keepAlive();
         }
@@ -484,11 +478,6 @@ Provider::Entity IpmiConnectionManager::getSensorReading(const std::shared_ptr<I
     
 }
 
-/*
-* std::map<std::list<std::string>, std::map<std::string, int>> IpmiConnectionManager::oem_cmds = {
-*    { {{"vadatech"},{"vt"}}, {{"reboot",-1}} }
-*};
-*/
 void IpmiConnectionManager::write_oem_command(const std::string &connectionId, const std::string vendorId, const std::string command)
 {
 
@@ -500,9 +489,7 @@ void IpmiConnectionManager::write_oem_command(const std::string &connectionId, c
             auto cmd = key_value.second.find(command);
             if(cmd != key_value.second.end())
             {
-                printf("+++ Calling the function pointer!\n");
                 cmd->second(this->mIpmiCtx);
-                return true;
             }
         }
     }
@@ -719,6 +706,7 @@ void IpmiConnectionManager::getSensorThresholds(Provider::Entity &entity, const 
             /** Thresholds are stored in raw values of multiple format types. Have to scale them.*/
             try
             {
+                /** Set the precision to 2*/
                 std::stringstream dstr;
                 dstr << std::fixed << std::setprecision(2) << record->scale_threshold(mSdrCtx, tval);
                 double d = 0;

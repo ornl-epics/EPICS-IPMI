@@ -17,6 +17,7 @@
 #include <limits>
 #include <iostream>
 
+
 extern "C" {
     static void providerThread(void* ctx)
     {
@@ -69,6 +70,7 @@ bool Provider::scheduleWrite(const Task&& task)
     if(task.entAddrTyp->getEntityAddressType() == EntityAddrType::Type::OEM_CMD)
     {
         write_oem_command(task.entAddrTyp);
+        task.callback();
         return true;
     }
     return false;

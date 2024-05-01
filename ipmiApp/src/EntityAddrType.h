@@ -9,6 +9,7 @@
 
 #include <string>
 #include <map>
+#include <vector>
 #include <tuple>
 
 class EntityAddrType {
@@ -32,8 +33,13 @@ private:
     uint8_t mLogicalFruDeviceSlaveSddress;
     uint8_t mLedId;
 
-    std::string mVendorId;
-    std::string mVendorCmd;
+    struct OEM_Command
+    {
+        std::string vendorId;
+        std::string commandId;
+        std::vector<std::string> commandArgs;
+    } mOemCmd;
+    
 
     void parseInOutString(const std::string &link);
 public:
@@ -53,6 +59,7 @@ public:
     std::pair<uint8_t, bool> getPicmgLedId() const;
 
     std::tuple<const std::string, const std::string> get_oem_command() const;
+    std::tuple<const std::string, const std::string, const std::vector<std::string>> get_oem_command_total() const;
 
 };
 

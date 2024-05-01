@@ -118,7 +118,7 @@ class Provider {
          * @return current value
          */
         virtual Entity getEntityValue(const std::shared_ptr<EntityAddrType> entAddrType) = 0;
-        virtual void write_oem_command(const std::shared_ptr<EntityAddrType> entAddrType) = 0;
+        virtual void write_oem_command(const std::shared_ptr<EntityAddrType> entAddrType, Entity &entity) = 0;
         
         virtual void process() = 0;
 

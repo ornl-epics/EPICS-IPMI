@@ -12,6 +12,13 @@
 #include <unistd.h>
 #include <iomanip>
 
+std::map<std::string, uint8_t> IpmiConnectionManager::VADATECH_SITE_TYPES =
+{
+    {"mch", 0x0A},
+    {"amc", 0x07},
+    {"cu", 0x04},
+    {"pm", 0x0B}
+};
 
 const std::map<std::string, std::string> IpmiConnectionManager::mThresholdsMap =
 {
@@ -39,21 +46,66 @@ const std::string IpmiConnectionManager::mSensorHysteresisValues [] =
 };
 
 //typedef int (*OEM_CALLBACK)(ipmi_ctx_t);
-std::map<std::list<std::string>, std::map<std::string, IpmiConnectionManager::OEM_CALLBACK>> IpmiConnectionManager::oem_cmds = {
+std::map<std::list<std::string>, std::map<std::string, IpmiConnectionManager::OEM_HANDLER>> IpmiConnectionManager::oem_cmds = {
     /** Format is {vendor-ids[]}, {cmd-name, callback}*/
-    { {{"vadatech"},{"vt"}}, {{"reboot",&IpmiConnectionManager::vadatech_reboot}} }
+    {
+        /** List of vendor-ids*/
+        {{"vadatech"},{"vt"}}, 
+                                {    /** Inner map of OEM commands and handlers.*/
+                                    {"reboot",&IpmiConnectionManager::vadatech_reboot},
+                                    {"set-power-state", &IpmiConnectionManager::vadatech_set_power_state}
+                                }
+    }
 };
 
-
-int IpmiConnectionManager::vadatech_reboot(ipmi_ctx_t ctx)
+///ipmitool -I lan -H 192.168.201.141 -U "" -P "" -t 0x82 raw 0x2e 0x9e 0x01 0x07 0x01
+int IpmiConnectionManager::vadatech_set_power_state(ipmi_ctx_t ctx, std::vector<std::string> &args, Provider::Entity &entity)
 {
+    printf("vadatech_set_power_state: front %s\n", args.front().c_str());
+    if(args.size() < 2)
+    {
+        throw std::runtime_error("Invalid arguments. vadatech_set_power_state requires two!");
+    }
+    if(!entity.hasField("VAL"))
+    {
+        throw std::runtime_error("Missing \'VAL\' field in vadatech_set_power_state!");
+    }
+    const uint8_t SET_CHASSIS_POWER_STATE = 0x9E;
+    const uint8_t val = entity.getField<int>("VAL", 0);
+
+    auto site_type = IpmiConnectionManager::VADATECH_SITE_TYPES.find(args[0]);
+    if(site_type == IpmiConnectionManager::VADATECH_SITE_TYPES.end())
+    {
+        throw std::runtime_error("Couldn't find site type field in vadatech_set_power_state!");
+    }
+    uint8_t site_id = (unsigned) std::stoi(args[1]);
+
+    printf("CMD: %u, val: %u, siteType: %u, siteId: %u\n", (unsigned) SET_CHASSIS_POWER_STATE, (unsigned) val, (unsigned) site_type->second, (unsigned) site_id);
+
+    uint8_t buf_rq [] = {SET_CHASSIS_POWER_STATE, val, 0xFF, 0xFF};
+    uint8_t buf_rs [100] = {0};
+    int rval = 0;
+
+    for(auto &x : args)
+    {
+        printf("arg: \'%s\'\n", x.c_str());
+    }
+    return 0;
+}
+
+int IpmiConnectionManager::vadatech_reboot(ipmi_ctx_t ctx, std::vector<std::string> &args, Provider::Entity &entity)
+{
+    printf("vadatech_reboot\n");
     uint8_t buf_rq [] = {0x9E, 0x00, 0xFF, 0xFF};
     uint8_t buf_rs [100] = {0};
+    int rval = 0;
+    /**
     int rval = ipmi_cmd_raw_ipmb (ctx, IPMI_CHANNEL_NUMBER_PRIMARY_IPMB, 0x82, 0x00, IPMI_NET_FN_OEM_GROUP_RQ,
                     &buf_rq,
                     sizeof(buf_rq),
                     &buf_rs,
                     sizeof(buf_rs));
+    */
 
     return rval;
 }
@@ -478,8 +530,15 @@ Provider::Entity IpmiConnectionManager::getSensorReading(const std::shared_ptr<I
     
 }
 
-void IpmiConnectionManager::write_oem_command(const std::string &connectionId, const std::string vendorId, const std::string command)
+void IpmiConnectionManager::write_oem_command(const std::shared_ptr<EntityAddrType> entAddrType, Provider::Entity &entity)
 {
+
+    std::string vendorId;
+    std::string command;
+    std::vector<std::string> cmdArgs;
+
+    std::tie(vendorId, command, cmdArgs) = entAddrType->get_oem_command_total();
+    //auto [vendorId, command, cmdArgs] = entAddrType->get_oem_command_total();
 
     for(auto &key_value : IpmiConnectionManager::oem_cmds)
     {
@@ -489,7 +548,7 @@ void IpmiConnectionManager::write_oem_command(const std::string &connectionId, c
             auto cmd = key_value.second.find(command);
             if(cmd != key_value.second.end())
             {
-                cmd->second(this->mIpmiCtx);
+                cmd->second(this->mIpmiCtx, cmdArgs, entity);
             }
         }
     }

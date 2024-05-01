@@ -64,9 +64,10 @@ private:
     static const std::map<std::string, std::string> mThresholdsMap;
     static const std::string mThresholdReadables [];
     static const std::string mSensorHysteresisValues [];
-    typedef int (*OEM_CALLBACK)(ipmi_ctx_t);
+    typedef int (*OEM_HANDLER)(ipmi_ctx_t ctx, std::vector<std::string> &args, Provider::Entity &value);
     
-    static std::map<std::list<std::string>, std::map<std::string, OEM_CALLBACK>> oem_cmds;
+    static std::map<std::list<std::string>, std::map<std::string, OEM_HANDLER>> oem_cmds;
+    static std::map<std::string, uint8_t> VADATECH_SITE_TYPES;
 
     void createIpmiContext();
     void createSdrContext();
@@ -85,7 +86,8 @@ private:
     Provider::Entity readSensor(const std::shared_ptr<IpmiSensorRecComp> record);
     void getSensorThresholds(Provider::Entity &entity, const std::shared_ptr<IpmiSensorRecComp> record);
     void getSensorHysteresis(Provider::Entity &entity, const std::shared_ptr<IpmiSensorRecComp> record);
-    static int vadatech_reboot(ipmi_ctx_t ctx);
+    static int vadatech_reboot(ipmi_ctx_t ctx, std::vector<std::string> &args, Provider::Entity &entity);
+    static int vadatech_set_power_state(ipmi_ctx_t ctx, std::vector<std::string> &args, Provider::Entity &entity);
     
 public:
     IpmiConnectionManager(const std::string &connectionid, const std::string &hostname,
@@ -101,7 +103,8 @@ public:
     void process();
 
     Provider::Entity getSensorReading(const std::shared_ptr<IpmiSensorRecComp> record);
-    void write_oem_command(const std::string &connectionId, const std::string vendorId, const std::string command);
+    ///void write_oem_command(const std::string &connectionId, const std::string vendorId, const std::string command);
+    void write_oem_command(const std::shared_ptr<EntityAddrType> entAddrType, Provider::Entity &entity);
     static bool is_valid_oem_command(const std::string &vendor_id, const std::string &command);
     
     IpmiSdrInfo getSdrInfo();

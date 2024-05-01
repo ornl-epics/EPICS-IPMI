@@ -71,13 +71,9 @@ FreeIpmiProvider::Entity FreeIpmiProvider::getEntityValue(const std::shared_ptr<
     return entity;
 }
 
-void FreeIpmiProvider::write_oem_command(const std::shared_ptr<EntityAddrType> entAddrType)
+void FreeIpmiProvider::write_oem_command(const std::shared_ptr<EntityAddrType> entAddrType, Entity &entity)
 {
-    std::string vid;
-    std::string vcmd;
-    std::tie(vid, vcmd) = entAddrType->get_oem_command();
-    mConnManager->write_oem_command(entAddrType->getConnectionId(), vid, vcmd);
-
+    mConnManager->write_oem_command(entAddrType, entity);
 }
 
 FreeIpmiProvider::Entity FreeIpmiProvider::getPicmgLedReading(const std::shared_ptr<EntityAddrType> entAddrType) {

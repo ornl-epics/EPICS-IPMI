@@ -165,8 +165,8 @@ static long initBoRecord(boRecord* rec)
          * it will also verify that the Sensor exist.
         */
         eaddrt = std::make_shared<EntityAddrType>(rec->out.value.instio.string);
-        
         dispatcher::checkLink(eaddrt);
+        
         IpmiRecord *ctx = reinterpret_cast<IpmiRecord*>(rec->dpvt);
         ctx->entAddrType = eaddrt;
     }
@@ -214,29 +214,27 @@ static long processBoRecord(boRecord* rec)
         }
     }
     
-    if(rec->val > 0 && rec->oraw < 1)
+    if (rec->pact == 0)
     {
-        if (rec->pact == 0)
+        rec->pact = 1;
+        std::function<void()> cb = std::bind(callbackRequestProcessCallback, &ctx->callback, rec->prio, rec);
+        try
         {
-            rec->pact = 1;
-            std::function<void()> cb = std::bind(callbackRequestProcessCallback, &ctx->callback, rec->prio, rec);
-            try
-            {
-                ///TODO: I am not sure if we are going to need a callback or not. But for now we use it.
-                /// Currently, the only ouput is a reboot command that doed not return anything.
-                dispatcher::scheduleWrite(ctx->entAddrType, cb, ctx->entity);
-            }
-            catch(const std::exception& e)
-            {
-                LOG_ERROR("Record Process \'" + std::string(rec->name) + "\': " + e.what() + '\n');
-                recGblSetSevr(rec, epicsAlarmUDF, epicsSevInvalid);
-
-                /** Try again, next time around*/
-                rec->pact = 0;
-                return -1;
-            }
-            return 0;
+            ///TODO: I am not sure if we are going to need a callback or not. But for now we use it.
+            /// Currently, the only ouput is a reboot command that doed not return anything.
+            ctx->entity["VAL"] = rec->val;
+            dispatcher::scheduleWrite(ctx->entAddrType, cb, ctx->entity);
         }
+        catch(const std::exception& e)
+        {
+            LOG_ERROR("Record Process \'" + std::string(rec->name) + "\': " + e.what() + '\n');
+            recGblSetSevr(rec, epicsAlarmUDF, epicsSevInvalid);
+
+            /** Try again, next time around*/
+            rec->pact = 0;
+            return -1;
+        }
+        return 0;
     }
         
 

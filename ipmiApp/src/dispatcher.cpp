@@ -69,7 +69,6 @@ bool connect(const std::string& conn_id, const std::string& hostname,
 
 std::shared_ptr<FreeIpmiProvider> checkEntityAddressType(const std::shared_ptr<EntityAddrType> entAddrType)
 {
-    
     /** First verify that the Entity Address and Type object is good to go.*/
     if(!entAddrType)
     {

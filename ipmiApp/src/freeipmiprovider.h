@@ -62,7 +62,7 @@ class FreeIpmiProvider : public Provider
             const std::shared_ptr<IpmiSensorRecComp> record);
         static Entity readPicmgLed(ipmi_ctx_t ipmi, const std::shared_ptr<PicmgLed> picmgLed);
         Entity getEntityValue(const std::shared_ptr<EntityAddrType> entAddrType) override;
-        void write_oem_command(const std::shared_ptr<EntityAddrType> entAddrType);
+        void write_oem_command(const std::shared_ptr<EntityAddrType> entAddrType, Entity &entity);
         void process() override;
         Entity getSensorReading(const std::shared_ptr<EntityAddrType> entAddrType);
         Entity getPicmgLedReading(const std::shared_ptr<EntityAddrType> entAddrType);

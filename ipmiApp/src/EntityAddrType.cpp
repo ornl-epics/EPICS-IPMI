@@ -89,7 +89,12 @@ const std::string EntityAddrType::getSensorIdAsKey() const
 
 std::tuple<const std::string, const std::string> EntityAddrType::get_oem_command() const
 {
-    return std::make_tuple(mVendorId, mVendorCmd);
+    return std::make_tuple(mOemCmd.vendorId, mOemCmd.commandId);
+}
+
+std::tuple<const std::string, const std::string, const std::vector<std::string>> EntityAddrType::get_oem_command_total() const
+{
+    return std::make_tuple(mOemCmd.vendorId, mOemCmd.commandId, mOemCmd.commandArgs);
 }
 
 void EntityAddrType::parseInOutString(const std::string &link) {
@@ -111,7 +116,8 @@ void EntityAddrType::parseInOutString(const std::string &link) {
 
     std::regex re_sensor ("([a-zA-Z0-9]+) ([sS][eE][nN][sS][oO][rR]) *([0-9]+) *: *([0-9]+) *\'(.*)\'");
     std::regex re_picmg_led("([a-zA-Z0-9]+) ([pP][iI][cC][mM][gG]_[lL][eE][dD]) *([0-9]+) *: *([0-9]+)");
-    std::regex re_oem_cmd ("^([a-zA-Z0-9]+)\\s+OEM_CMD\\s+([a-zA-Z0-9]+)\\s+([a-zA-Z0-9]+)\\s*$");
+    //std::regex re_oem_cmd ("^([a-zA-Z0-9]+)\\s+OEM_CMD\\s+([a-zA-Z0-9]+)\\s+([a-zA-Z0-9]+)\\s*$");
+    std::regex re_oem_cmd ("^([a-zA-Z0-9]+)\\s+OEM_CMD\\s+([a-zA-Z0-9]+)\\s+([a-zA-Z0-9-]+)(?: ([a-zA-Z0-9][a-zA-Z0-9-_\\s]+))?$");
     std::smatch re_m;
 
     /**
@@ -151,14 +157,32 @@ void EntityAddrType::parseInOutString(const std::string &link) {
     {
         mAddrType = Type::OEM_CMD;
         mConnectionId = re_m[1].str();
-        mVendorId = re_m[2].str();
-        mVendorCmd = re_m[3].str();
+        mOemCmd.vendorId = re_m[2].str();
+        mOemCmd.commandId = re_m[3].str();
 
         /* Make'em lowercase.*/
-        std::transform(mVendorId.begin(), mVendorId.end(), mVendorId.begin(), ::tolower);
-        std::transform(mVendorCmd.begin(), mVendorCmd.end(), mVendorCmd.begin(), ::tolower);
-
+        std::transform(mOemCmd.vendorId.begin(), mOemCmd.vendorId.end(), mOemCmd.vendorId.begin(), ::tolower);
+        std::transform(mOemCmd.commandId.begin(), mOemCmd.commandId.end(), mOemCmd.commandId.begin(), ::tolower);
+        
+        /** Optional command arguments*/
+        if(!re_m[4].str().empty())
+        {
+            /** split the list of arguments based on whitespace*/
+            int strstart = 0;
+            int strend = 0;
+            while((strstart = re_m[4].str().find_first_not_of( ' ',strend)) != std::string::npos)
+            {
+                strend = re_m[4].str().find(' ', strstart);
+                mOemCmd.commandArgs.push_back(re_m[4].str().substr(strstart, strend-strstart));
+            }
+            for(auto &str : mOemCmd.commandArgs)
+            {
+                /** Make these lower too*/
+                std::transform(str.begin(), str.end(), str.begin(), ::tolower);
+            }
+        }
     }
+        
     
     else {  /* Something is wrong. Throw now! */
         throw std::invalid_argument("Link field does not contain proper arguments. \'" + link + "\'");

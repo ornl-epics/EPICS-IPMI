@@ -126,9 +126,7 @@ std::shared_ptr<FreeIpmiProvider> checkEntityAddressType(const std::shared_ptr<E
         }
         case EntityAddrType::Type::OEM_CMD:
         {
-            std::string vid;
-            std::string vcmd;
-            std::tie(vid, vcmd) = entAddrType->get_oem_command();
+            auto [vid, vcmd, args] = entAddrType->get_oem_command();
             if(!conn->is_valid_oem_cmd(vid, vcmd))
             {
                 throw std::runtime_error("Invalid OEM ID: \'" + vid +"\', and Command: \'" + vcmd + "\'\n");

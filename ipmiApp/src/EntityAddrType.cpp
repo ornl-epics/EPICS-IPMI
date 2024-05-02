@@ -87,15 +87,11 @@ const std::string EntityAddrType::getSensorIdAsKey() const
     + mSensorIdString;
 }
 
-std::tuple<const std::string, const std::string> EntityAddrType::get_oem_command() const
-{
-    return std::make_tuple(mOemCmd.vendorId, mOemCmd.commandId);
-}
-
-std::tuple<const std::string, const std::string, const std::vector<std::string>> EntityAddrType::get_oem_command_total() const
+std::tuple<const std::string, const std::string, const std::vector<std::string>> EntityAddrType::get_oem_command() const
 {
     return std::make_tuple(mOemCmd.vendorId, mOemCmd.commandId, mOemCmd.commandArgs);
 }
+
 
 void EntityAddrType::parseInOutString(const std::string &link) {
 

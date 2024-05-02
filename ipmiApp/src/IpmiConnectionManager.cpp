@@ -58,7 +58,7 @@ std::map<std::list<std::string>, std::map<std::string, IpmiConnectionManager::OE
     }
 };
 
-int IpmiConnectionManager::vadatech_set_power_state(ipmi_ctx_t ctx, std::vector<std::string> &args, Provider::Entity &entity)
+int IpmiConnectionManager::vadatech_set_power_state(ipmi_ctx_t ctx, const std::vector<std::string> &args, Provider::Entity &entity)
 {
     if(args.size() < 2)
     {
@@ -116,7 +116,7 @@ int IpmiConnectionManager::vadatech_set_power_state(ipmi_ctx_t ctx, std::vector<
     return 0;
 }
 
-int IpmiConnectionManager::vadatech_reboot(ipmi_ctx_t ctx, std::vector<std::string> &args, Provider::Entity &entity)
+int IpmiConnectionManager::vadatech_reboot(ipmi_ctx_t ctx, const std::vector<std::string> &args, Provider::Entity &entity)
 {
     printf("vadatech_reboot\n");
     uint8_t buf_rq [] = {0x9E, 0x00, 0xFF, 0xFF};
@@ -137,7 +137,6 @@ int IpmiConnectionManager::send_ipmi_cmd_raw_ipmb(ipmi_ctx_t ctx, uint8_t channe
     uint8_t rs_addr, uint8_t lun, uint8_t net_fn, const void *buf_rq, unsigned int buf_rq_len,
     void *buf_rs, unsigned int buf_rs_len)
 {
-    printf("vadatech send_ipmi_cmd_raw_ipmb\n");
     int rval = ipmi_cmd_raw_ipmb (ctx, channel_number, rs_addr, lun, net_fn, buf_rq,
                 buf_rq_len, buf_rs, buf_rs_len);
     return rval;
@@ -566,12 +565,12 @@ Provider::Entity IpmiConnectionManager::getSensorReading(const std::shared_ptr<I
 void IpmiConnectionManager::write_oem_command(const std::shared_ptr<EntityAddrType> entAddrType, Provider::Entity &entity)
 {
 
-    std::string vendorId;
-    std::string command;
-    std::vector<std::string> cmdArgs;
+    //std::string vendorId;
+    //std::string command;
+    //std::vector<std::string> cmdArgs;
 
-    std::tie(vendorId, command, cmdArgs) = entAddrType->get_oem_command_total();
-    //auto [vendorId, command, cmdArgs] = entAddrType->get_oem_command_total();
+    //std::tie(vendorId, command, cmdArgs) = entAddrType->get_oem_command_total();
+    auto [vendorId, command, cmdArgs] = entAddrType->get_oem_command();
 
     for(auto &key_value : IpmiConnectionManager::oem_cmds)
     {

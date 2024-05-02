@@ -64,7 +64,7 @@ private:
     static const std::map<std::string, std::string> mThresholdsMap;
     static const std::string mThresholdReadables [];
     static const std::string mSensorHysteresisValues [];
-    typedef int (*OEM_HANDLER)(ipmi_ctx_t ctx, std::vector<std::string> &args, Provider::Entity &value);
+    typedef int (*OEM_HANDLER)(ipmi_ctx_t ctx, const std::vector<std::string> &args, Provider::Entity &value);
     
     static std::map<std::list<std::string>, std::map<std::string, OEM_HANDLER>> oem_cmds;
     static std::map<std::string, uint8_t> VADATECH_SITE_TYPES;
@@ -87,8 +87,8 @@ private:
     Provider::Entity readSensor(const std::shared_ptr<IpmiSensorRecComp> record);
     void getSensorThresholds(Provider::Entity &entity, const std::shared_ptr<IpmiSensorRecComp> record);
     void getSensorHysteresis(Provider::Entity &entity, const std::shared_ptr<IpmiSensorRecComp> record);
-    static int vadatech_reboot(ipmi_ctx_t ctx, std::vector<std::string> &args, Provider::Entity &entity);
-    static int vadatech_set_power_state(ipmi_ctx_t ctx, std::vector<std::string> &args, Provider::Entity &entity);
+    static int vadatech_reboot(ipmi_ctx_t ctx, const std::vector<std::string> &args, Provider::Entity &entity);
+    static int vadatech_set_power_state(ipmi_ctx_t ctx, const std::vector<std::string> &args, Provider::Entity &entity);
     static int send_ipmi_cmd_raw_ipmb(ipmi_ctx_t ctx, uint8_t channel_number, uint8_t rs_addr,
                 uint8_t lun, uint8_t net_fn, const void *buf_rq, unsigned int buf_rq_len,
                 void *buf_rs, unsigned int buf_rs_len);

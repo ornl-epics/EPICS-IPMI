@@ -52,7 +52,7 @@ std::map<std::list<std::string>, std::map<std::string, IpmiConnectionManager::OE
         /** List of vendor-ids*/
         {{"vadatech"},{"vt"}}, 
                                 {    /** Inner map of OEM commands and handlers.*/
-                                    {"reboot",&IpmiConnectionManager::vadatech_reboot},
+                                    {"reboot",&IpmiConnectionManager::vadatech_reboot_chassis},
                                     {"set-power-state", &IpmiConnectionManager::vadatech_set_power_state}
                                 }
     }
@@ -85,7 +85,7 @@ int IpmiConnectionManager::vadatech_set_power_state(ipmi_ctx_t ctx, const std::v
     const uint8_t SITE_TYPE_VALUE = site_type_itr->second;
 
     const uint8_t buf_rq [] = {SET_CHASSIS_POWER_STATE, val, SITE_TYPE_VALUE, SITE_ID};
-    uint8_t buf_rs [100] = {0};
+    uint8_t buf_rs [50] = {0};
     int rval = IpmiConnectionManager::send_ipmi_cmd_raw_ipmb(ctx, IPMI_CHANNEL_NUMBER_PRIMARY_IPMB, IpmiConnectionManager::VADATECH_IPMB_ADDRESS,
         IPMI_BMC_IPMB_LUN_BMC, IPMI_NET_FN_OEM_GROUP_RQ, &buf_rq, sizeof(buf_rq), &buf_rs, sizeof(buf_rs));
 
@@ -116,21 +116,29 @@ int IpmiConnectionManager::vadatech_set_power_state(ipmi_ctx_t ctx, const std::v
     return 0;
 }
 
-int IpmiConnectionManager::vadatech_reboot(ipmi_ctx_t ctx, const std::vector<std::string> &args, Provider::Entity &entity)
+int IpmiConnectionManager::vadatech_reboot_chassis(ipmi_ctx_t ctx, const std::vector<std::string> &args, Provider::Entity &entity)
 {
-    printf("vadatech_reboot\n");
-    uint8_t buf_rq [] = {0x9E, 0x00, 0xFF, 0xFF};
-    uint8_t buf_rs [100] = {0};
-    int rval = 0;
-    /*
-    int rval = ipmi_cmd_raw_ipmb (ctx, IPMI_CHANNEL_NUMBER_PRIMARY_IPMB, 0x82, 0x00, IPMI_NET_FN_OEM_GROUP_RQ,
-                    &buf_rq,
-                    sizeof(buf_rq),
-                    &buf_rs,
-                    sizeof(buf_rs));
-    */
+    if(!entity.hasField("VAL"))
+    {
+        throw std::runtime_error("Can't reboot_chassis. Missing \'VAL\' field. Device support routine is supposed to set the VAL field.\n");
+    }
 
-    return rval;
+    const uint8_t SET_CHASSIS_POWER_STATE = 0x9E;
+    const uint8_t val = entity.getField<int>("VAL", 0);
+    
+    if(val < 1)
+    {
+        return 0;
+    }
+    
+    uint8_t buf_rq [] = {SET_CHASSIS_POWER_STATE, 0x00, 0xFF, 0xFF};
+    uint8_t buf_rs [50] = {0};
+
+    /** This command returns -1 for the whole chassis reboot.*/
+    int rval = IpmiConnectionManager::send_ipmi_cmd_raw_ipmb(ctx, IPMI_CHANNEL_NUMBER_PRIMARY_IPMB, IpmiConnectionManager::VADATECH_IPMB_ADDRESS,
+        IPMI_BMC_IPMB_LUN_BMC, IPMI_NET_FN_OEM_GROUP_RQ, &buf_rq, sizeof(buf_rq), &buf_rs, sizeof(buf_rs));
+
+    return 0;
 }
 
 int IpmiConnectionManager::send_ipmi_cmd_raw_ipmb(ipmi_ctx_t ctx, uint8_t channel_number,

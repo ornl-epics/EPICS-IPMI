@@ -16,12 +16,27 @@
 #include <stdio.h>
 #include <string>
 #include <sstream>
+#include <iomanip>
 
 #include <epicsTime.h>
 
 namespace common {
 
 static unsigned epicsipmiLogLevel = 4;
+
+std::string hex_dump(uint8_t const * const buff, unsigned int const pos, size_t const len)
+{
+
+	std::stringstream ss;
+
+	/** loop through the buffer.*/
+	for(size_t i = 0; i < len; i++) {
+		/** Format it and print it in Hex.*/
+		ss << "0x" << std::setfill('0') << std::setw(2) << std::hex << (unsigned int) buff[(i+pos)];
+	}
+
+	return ss.str();
+}
 
 void epicsipmi_log(unsigned severity, const std::string& fmt, ...)
 {

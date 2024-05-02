@@ -68,6 +68,7 @@ private:
     
     static std::map<std::list<std::string>, std::map<std::string, OEM_HANDLER>> oem_cmds;
     static std::map<std::string, uint8_t> VADATECH_SITE_TYPES;
+    static const uint8_t VADATECH_IPMB_ADDRESS {0x82};
 
     void createIpmiContext();
     void createSdrContext();
@@ -88,6 +89,9 @@ private:
     void getSensorHysteresis(Provider::Entity &entity, const std::shared_ptr<IpmiSensorRecComp> record);
     static int vadatech_reboot(ipmi_ctx_t ctx, std::vector<std::string> &args, Provider::Entity &entity);
     static int vadatech_set_power_state(ipmi_ctx_t ctx, std::vector<std::string> &args, Provider::Entity &entity);
+    static int send_ipmi_cmd_raw_ipmb(ipmi_ctx_t ctx, uint8_t channel_number, uint8_t rs_addr,
+                uint8_t lun, uint8_t net_fn, const void *buf_rq, unsigned int buf_rq_len,
+                void *buf_rs, unsigned int buf_rs_len);
     
 public:
     IpmiConnectionManager(const std::string &connectionid, const std::string &hostname,
@@ -96,6 +100,7 @@ public:
     const std::string &privilegelevel);
     ~IpmiConnectionManager();
 
+    
     ipmi_ctx_t getIpmiCtx();
     ipmi_sdr_ctx_t getSdrCtx();
     const std::string &getConnectionId() const;

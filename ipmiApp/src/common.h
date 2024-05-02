@@ -26,6 +26,8 @@
 
 namespace common {
 
+std::string hex_dump(uint8_t const * const buff, unsigned int const pos, size_t const len);
+
 void epicsipmi_log(unsigned severity, const std::string& fmt, ...);
 
 template <template <class...> class Container, class Type, class ... Allocator>

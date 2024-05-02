@@ -58,38 +58,61 @@ std::map<std::list<std::string>, std::map<std::string, IpmiConnectionManager::OE
     }
 };
 
-///ipmitool -I lan -H 192.168.201.141 -U "" -P "" -t 0x82 raw 0x2e 0x9e 0x01 0x07 0x01
 int IpmiConnectionManager::vadatech_set_power_state(ipmi_ctx_t ctx, std::vector<std::string> &args, Provider::Entity &entity)
 {
-    printf("vadatech_set_power_state: front %s\n", args.front().c_str());
     if(args.size() < 2)
     {
-        throw std::runtime_error("Invalid arguments. vadatech_set_power_state requires two!");
+        throw std::runtime_error("Can't set_power_state. vadatech set_power_state requires two arguments: "
+        "Module type (e.g., AMC, MCH, PM,...) and Site Number (1...16).\n"
+        "Example: set_power_state AMC 1\n");
     }
     if(!entity.hasField("VAL"))
     {
-        throw std::runtime_error("Missing \'VAL\' field in vadatech_set_power_state!");
+        throw std::runtime_error("Can't set_power_state. Missing \'VAL\' field. Device support routine is supposed to set the VAL field.\n");
     }
+
     const uint8_t SET_CHASSIS_POWER_STATE = 0x9E;
     const uint8_t val = entity.getField<int>("VAL", 0);
+    const std::string &SITE_TYPE_NAME = args[0];
+    const std::string &SITE_ID_STRING = args[1];
+    const uint8_t SITE_ID = std::stoi(SITE_ID_STRING);
 
-    auto site_type = IpmiConnectionManager::VADATECH_SITE_TYPES.find(args[0]);
-    if(site_type == IpmiConnectionManager::VADATECH_SITE_TYPES.end())
+    auto site_type_itr = IpmiConnectionManager::VADATECH_SITE_TYPES.find(SITE_TYPE_NAME);
+    if(site_type_itr == IpmiConnectionManager::VADATECH_SITE_TYPES.end())
     {
-        throw std::runtime_error("Couldn't find site type field in vadatech_set_power_state!");
+        throw std::runtime_error("Can't set_power_state. Invalid Site Type \'" + SITE_TYPE_NAME + "\'\n");
     }
-    uint8_t site_id = (unsigned) std::stoi(args[1]);
+    const uint8_t SITE_TYPE_VALUE = site_type_itr->second;
 
-    printf("CMD: %u, val: %u, siteType: %u, siteId: %u\n", (unsigned) SET_CHASSIS_POWER_STATE, (unsigned) val, (unsigned) site_type->second, (unsigned) site_id);
-
-    uint8_t buf_rq [] = {SET_CHASSIS_POWER_STATE, val, 0xFF, 0xFF};
+    const uint8_t buf_rq [] = {SET_CHASSIS_POWER_STATE, val, SITE_TYPE_VALUE, SITE_ID};
     uint8_t buf_rs [100] = {0};
-    int rval = 0;
+    int rval = IpmiConnectionManager::send_ipmi_cmd_raw_ipmb(ctx, IPMI_CHANNEL_NUMBER_PRIMARY_IPMB, IpmiConnectionManager::VADATECH_IPMB_ADDRESS,
+        IPMI_BMC_IPMB_LUN_BMC, IPMI_NET_FN_OEM_GROUP_RQ, &buf_rq, sizeof(buf_rq), &buf_rs, sizeof(buf_rs));
 
-    for(auto &x : args)
+    /** 
+     * Inspect the reply.
+     * Based on tests, two bytes are returned:
+     * byte[0] is the Command Code that was sent out in the request, SET_CHASSIS_POWER_STATE (0x9E)
+     * byte[1] is the Completion Code. 0x00 is a 'Command Completed Normally'
+     * See Table 5-, Completion Codes in the IPMI specification.
+    */
+
+    if(rval != 2)
     {
-        printf("arg: \'%s\'\n", x.c_str());
+        throw std::runtime_error("set_power_state returned an invalid value. "
+        "A value of 2 was expected but " + std::to_string(rval) + " was returned.\n");
     }
+    else if (buf_rs[0] != SET_CHASSIS_POWER_STATE)
+    {
+        throw std::runtime_error("set_power_state returned an invalid value. "
+        "OEM command of \'" + common::hex_dump(&SET_CHASSIS_POWER_STATE, 0, 1) + "\' expected but \'" + common::hex_dump(&buf_rs[0],0,1) + "\' was returned.\n");
+    }
+    else if (buf_rs[1] != IPMI_COMP_CODE_COMMAND_SUCCESS)
+    {
+        throw std::runtime_error("set_power_state returned an invalid Completion Code. "
+        "A value of \'0x00\' was expected but \'" + common::hex_dump(&buf_rs[1], 0, 1) + "\' was returned.\n");
+    }
+    
     return 0;
 }
 
@@ -99,7 +122,7 @@ int IpmiConnectionManager::vadatech_reboot(ipmi_ctx_t ctx, std::vector<std::stri
     uint8_t buf_rq [] = {0x9E, 0x00, 0xFF, 0xFF};
     uint8_t buf_rs [100] = {0};
     int rval = 0;
-    /**
+    /*
     int rval = ipmi_cmd_raw_ipmb (ctx, IPMI_CHANNEL_NUMBER_PRIMARY_IPMB, 0x82, 0x00, IPMI_NET_FN_OEM_GROUP_RQ,
                     &buf_rq,
                     sizeof(buf_rq),
@@ -107,6 +130,16 @@ int IpmiConnectionManager::vadatech_reboot(ipmi_ctx_t ctx, std::vector<std::stri
                     sizeof(buf_rs));
     */
 
+    return rval;
+}
+
+int IpmiConnectionManager::send_ipmi_cmd_raw_ipmb(ipmi_ctx_t ctx, uint8_t channel_number,
+    uint8_t rs_addr, uint8_t lun, uint8_t net_fn, const void *buf_rq, unsigned int buf_rq_len,
+    void *buf_rs, unsigned int buf_rs_len)
+{
+    printf("vadatech send_ipmi_cmd_raw_ipmb\n");
+    int rval = ipmi_cmd_raw_ipmb (ctx, channel_number, rs_addr, lun, net_fn, buf_rq,
+                buf_rq_len, buf_rs, buf_rs_len);
     return rval;
 }
 

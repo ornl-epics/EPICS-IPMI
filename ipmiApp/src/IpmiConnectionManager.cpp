@@ -482,6 +482,7 @@ IpmiSdrInfo IpmiConnectionManager::readSdrInfo() {
     }
 
     if((rv = ipmi_cmd(mIpmiCtx, IPMI_BMC_IPMB_LUN_BMC, IPMI_NET_FN_STORAGE_RQ, mSdrRepositoryInfoRq, mSdrRepositoryInfoRs)) < 0) {
+        disconnect();
         throw std::runtime_error("Can't read SDR info for connection id: \'" + mConnId +
         "\', Reason: ipmi_cmd() returned -1");
     }

@@ -165,7 +165,7 @@ bool scheduleWrite(const std::shared_ptr<EntityAddrType> entAddrType, const std:
 {
     /** First verify that the Entity Address and Type object is good to go.*/
     auto conn = checkEntityAddressType(entAddrType);
-    return conn->scheduleWrite( Provider::Task(entAddrType, cb, entity) );
+    return conn->schedule( Provider::Task(entAddrType, cb, entity) );
 }
 
 }; // namespace dispatcher

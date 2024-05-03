@@ -85,7 +85,6 @@ class Provider {
          * @return true if succesfully scheduled and will invoke record post-processing
          */
         bool schedule(const Task&& task);
-        bool scheduleWrite(const Task&& task);
 
         /**
          * @brief Thread processing enqueued tasks

@@ -65,17 +65,6 @@ bool Provider::schedule(const Task&& task)
     return true;
 }
 
-bool Provider::scheduleWrite(const Task&& task)
-{
-    if(task.entAddrTyp->getEntityAddressType() == EntityAddrType::Type::OEM_CMD)
-    {
-        write_oem_command(task.entAddrTyp, task.entity);
-        task.callback();
-        return true;
-    }
-    return false;
-}
-
 void Provider::tasksThread()
 {
     while (m_tasks.processing) {
@@ -94,19 +83,33 @@ void Provider::tasksThread()
         m_tasks.queue.pop_front();
         m_tasks.mutex.unlock();
 
+        const EntityAddrType::Type ADDRESS_TYPE = task.entAddrTyp->getEntityAddressType();
+
         try {
             
-            Entity ent = getEntityValue(task.entAddrTyp);
+            switch (ADDRESS_TYPE)
+            {
+                case EntityAddrType::Type::SENSOR:
+                {
+                    Entity ent = getEntityValue(task.entAddrTyp);
 
-            for (auto& kv: ent) {
-                task.entity[kv.first] = std::move(kv.second);
+                    for (auto& kv: ent)
+                    {
+                        task.entity[kv.first] = std::move(kv.second);
+                    }
+                    /** We have to set these back to normal if we had
+                     * set them below in the catch... otherwise they
+                     * stay in alarm.
+                    */
+                    task.entity["SEVR"] = (int)epicsSevNone;
+                    task.entity["STAT"] = (int)epicsAlarmNone;
+                }
+                case EntityAddrType::Type::OEM_CMD:
+                {
+                    write_oem_command(task.entAddrTyp, task.entity);
+                }
             }
-            /** We have to set these back to normal if we had
-             * set them below in the catch... otherwise they
-             * stay in alarm.
-            */
-            task.entity["SEVR"] = (int)epicsSevNone;
-            task.entity["STAT"] = (int)epicsAlarmNone;
+            
             
 
         } catch (std::runtime_error &e) {

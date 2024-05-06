@@ -9,12 +9,14 @@
 #include <cstdint>
 #include <map>
 #include <list>
+#include <functional>
 #include <freeipmi/freeipmi.h>
 #include <epicsTime.h>
 #include "common.h"
 #include "provider.h"
 #include "IpmiException.h"
 #include "IpmiSdrInfo.h"
+
 
 #ifndef IPMIAPP_SRC_CONNECTIONMANAGER_H_
 #define IPMIAPP_SRC_CONNECTIONMANAGER_H_
@@ -65,7 +67,6 @@ private:
     static const std::string mThresholdReadables [];
     static const std::string mSensorHysteresisValues [];
     typedef int (*OEM_HANDLER)(ipmi_ctx_t ctx, const std::vector<std::string> &args, Provider::Entity &value);
-    
     static std::map<std::list<std::string>, std::map<std::string, OEM_HANDLER>> oem_cmds;
     static std::map<std::string, uint8_t> VADATECH_SITE_TYPES;
     static const uint8_t VADATECH_IPMB_ADDRESS {0x82};
@@ -80,6 +81,7 @@ private:
     void cleanup();
     void keepAlive();
     IpmiSdrInfo readSdrInfo();
+    void updateIdleTime();
     
     uint8_t initAuthtype(const std::string &authenticationtype, const std::string &username);
     uint8_t initPrivLevel(const std::string &privlegelevel);

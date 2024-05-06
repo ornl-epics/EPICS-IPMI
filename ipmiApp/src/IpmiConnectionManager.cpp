@@ -45,14 +45,13 @@ const std::string IpmiConnectionManager::mSensorHysteresisValues [] =
     "negative_going_threshold_hysteresis_value"
 };
 
-//typedef int (*OEM_CALLBACK)(ipmi_ctx_t);
 std::map<std::list<std::string>, std::map<std::string, IpmiConnectionManager::OEM_HANDLER>> IpmiConnectionManager::oem_cmds = {
     /** Format is {vendor-ids[]}, {cmd-name, callback}*/
     {
         /** List of vendor-ids*/
         {{"vadatech"},{"vt"}}, 
                                 {    /** Inner map of OEM commands and handlers.*/
-                                    {"reboot",&IpmiConnectionManager::vadatech_reboot_chassis},
+                                    {"reboot", &IpmiConnectionManager::vadatech_reboot_chassis},
                                     {"set-power-state", &IpmiConnectionManager::vadatech_set_power_state}
                                 }
     }
@@ -147,6 +146,7 @@ int IpmiConnectionManager::send_ipmi_cmd_raw_ipmb(ipmi_ctx_t ctx, uint8_t channe
 {
     int rval = ipmi_cmd_raw_ipmb (ctx, channel_number, rs_addr, lun, net_fn, buf_rq,
                 buf_rq_len, buf_rs, buf_rs_len);
+
     return rval;
 }
 
@@ -164,7 +164,7 @@ IpmiConnectionManager::IpmiConnectionManager(const std::string &connectionid, co
 , mCachePath(fs::current_path()/"iocBoot/var/ipmi")
 , mCacheFile(mCachePath / (connectionid + "." + hostname + ".cache"))
 {
-
+    
     mSdrRepositoryInfoRs = fiid_obj_create(tmpl_cmd_get_sdr_repository_info_rs);
     mSdrRepositoryInfoRq = fiid_obj_create(tmpl_cmd_get_sdr_repository_info_rq);
     mGetSensorThresholdsRq = fiid_obj_create(tmpl_cmd_get_sensor_thresholds_rq);
@@ -508,6 +508,11 @@ IpmiSdrInfo IpmiConnectionManager::readSdrInfo() {
     
 }
 
+void IpmiConnectionManager::updateIdleTime()
+{
+    mIdleTime = epicsTime::getCurrent();
+}
+
 Provider::Entity IpmiConnectionManager::getSensorReading(const std::shared_ptr<IpmiSensorRecComp> record) {
 
 
@@ -574,11 +579,6 @@ Provider::Entity IpmiConnectionManager::getSensorReading(const std::shared_ptr<I
 void IpmiConnectionManager::write_oem_command(const std::shared_ptr<EntityAddrType> entAddrType, Provider::Entity &entity)
 {
 
-    //std::string vendorId;
-    //std::string command;
-    //std::vector<std::string> cmdArgs;
-
-    //std::tie(vendorId, command, cmdArgs) = entAddrType->get_oem_command_total();
     auto [vendorId, command, cmdArgs] = entAddrType->get_oem_command();
 
     for(auto &key_value : IpmiConnectionManager::oem_cmds)
@@ -589,11 +589,11 @@ void IpmiConnectionManager::write_oem_command(const std::shared_ptr<EntityAddrTy
             auto cmd = key_value.second.find(command);
             if(cmd != key_value.second.end())
             {
-                cmd->second(this->mIpmiCtx, cmdArgs, entity);
+                cmd->second(mIpmiCtx, cmdArgs, entity);
+                updateIdleTime();
             }
         }
     }
-
 }
 
 bool IpmiConnectionManager::is_valid_oem_command(const std::string &vendor_id, const std::string &command)

@@ -136,20 +136,21 @@ void FreeIpmiProvider::process() {
 
     try
     {
-        if(mConnManager) {
+        if(mConnManager)
+        {
             mConnManager->process();
-        }
-
-        try
-        {
-            if(mSdrManager) {
-                mSdrManager->process();
+            try
+            {
+                if(mSdrManager && mConnManager->isConnected())
+                {
+                    mSdrManager->process();
+                }
             }
-        }
-        catch(const std::exception& e)
-        {
-            std::cout << "*** mSdrManager Exception Caught" << std::endl;
-            std::cerr << e.what() << '\n';
+            catch(const std::exception& e)
+            {
+                std::cout << "*** mSdrManager Exception Caught" << std::endl;
+                std::cerr << e.what() << '\n';
+            }
         }
     }
     catch(const std::exception& e)

@@ -201,13 +201,16 @@ IpmiConnectionManager::IpmiConnectionManager(const std::string &connectionid, co
       
 }
 
-IpmiConnectionManager::~IpmiConnectionManager() {
+IpmiConnectionManager::~IpmiConnectionManager()
+{
 
-    if (mIpmiCtx) {
+    if (mIpmiCtx)
+    {
         ipmi_ctx_close(mIpmiCtx);
         ipmi_ctx_destroy(mIpmiCtx);
     }
-    if (mSdrCtx) {
+    if (mSdrCtx)
+    {
         ipmi_sdr_ctx_destroy(mSdrCtx);
     }
     // if (m_ctx.sensors) {
@@ -218,24 +221,30 @@ IpmiConnectionManager::~IpmiConnectionManager() {
     // }
 }
 
-void IpmiConnectionManager::cleanup() {
+void IpmiConnectionManager::cleanup()
+{
 
-    if (mSensorCtx) {
+    if (mSensorCtx)
+    {
         ipmi_sensor_read_ctx_destroy(mSensorCtx);
     }
     // if (m_ctx.fru) {
     //     ipmi_fru_ctx_destroy(m_ctx.fru);
     // }
-    if(mSdrCtx) {
-        if(mCacheFileIsOpen) {
-            if(ipmi_sdr_cache_close (mSdrCtx) < 0) {
+    if(mSdrCtx)
+    {
+        if(mCacheFileIsOpen)
+        {
+            if(ipmi_sdr_cache_close (mSdrCtx) < 0)
+            {
                 LOG_INFO("Can't close SDR cache for connection id: \'" +
                 mConnId + "\' @ \'" + mHostname + "\' in cleanup method.\n");
             }
         }
         ipmi_sdr_ctx_destroy(mSdrCtx);
     }
-    if (mIpmiCtx) {
+    if (mIpmiCtx)
+    {
         ipmi_ctx_close(mIpmiCtx);
         ipmi_ctx_destroy(mIpmiCtx);
     }
@@ -247,7 +256,8 @@ void IpmiConnectionManager::cleanup() {
     return;
 }
 
-uint8_t IpmiConnectionManager::initAuthtype(const std::string &authenticationtype, const std::string &username) {
+uint8_t IpmiConnectionManager::initAuthtype(const std::string &authenticationtype, const std::string &username)
+{
 
     if (authenticationtype == "none" || username.empty())
         return IPMI_AUTHENTICATION_TYPE_NONE;
@@ -263,7 +273,8 @@ uint8_t IpmiConnectionManager::initAuthtype(const std::string &authenticationtyp
 
 }
 
-uint8_t IpmiConnectionManager::initPrivLevel(const std::string &privlegelevel) {
+uint8_t IpmiConnectionManager::initPrivLevel(const std::string &privlegelevel)
+{
 
     if (privlegelevel == "admin")
         return IPMI_PRIVILEGE_LEVEL_ADMIN;
@@ -276,22 +287,32 @@ uint8_t IpmiConnectionManager::initPrivLevel(const std::string &privlegelevel) {
         mConnId + "\' @ \'" + mHostname + "\' (choose from \'user\', \'operator\', \'admin\')\n");
 }
 
-void IpmiConnectionManager::createSdrContext() {
-    
+void IpmiConnectionManager::createSdrContext()
+{
+    if(mSdrCtx)
+    {
+        ipmi_sdr_ctx_destroy(mSdrCtx);
+    }
     mSdrCtx = ipmi_sdr_ctx_create();
 
-    if (!mSdrCtx) {
+    if (!mSdrCtx)
+    {
         throw std::runtime_error("Can't create SDR context for connection id: \'" +
         mConnId + "\' @ \'" + mHostname + "\'\n");
     }
 
 }
 
-void IpmiConnectionManager::createSensorContext() {
-    
+void IpmiConnectionManager::createSensorContext()
+{
+    if (mSensorCtx)
+    {
+        ipmi_sensor_read_ctx_destroy(mSensorCtx);
+    }
     mSensorCtx = ipmi_sensor_read_ctx_create(mIpmiCtx);
 
-    if (!mSensorCtx) {
+    if (!mSensorCtx)
+    {
         throw std::runtime_error("Can't create sensor-read context for connection id: \'" +
         mConnId + "\' @ \'" + mHostname + "\'\n");
     }
@@ -304,16 +325,19 @@ void IpmiConnectionManager::createSensorContext() {
         mConnId + "\' @ \'" + mHostname + "\' - " + ipmi_sensor_read_ctx_errormsg(mSensorCtx) + "\n");
 }
 
-void IpmiConnectionManager::rebuildSdrCache() {
+void IpmiConnectionManager::rebuildSdrCache()
+{
     
     int rv = -1;
     LOG_INFO("Deleting out of date or invalid SDR cache file \'" + mCacheFile.string() + "\' for connection id: \'" + mConnId + "\'\n");
-    if((rv = ipmi_sdr_cache_close (mSdrCtx)) < 0) {
+    if((rv = ipmi_sdr_cache_close (mSdrCtx)) < 0)
+    {
         LOG_ERROR("Can't close SDR cache for connection id: \'" +
         mConnId + "\' @ \'" + mHostname + "\'\n");
     }
 
-    if((rv = ipmi_sdr_cache_delete(mSdrCtx, mCacheFile.c_str())) < 0) {
+    if((rv = ipmi_sdr_cache_delete(mSdrCtx, mCacheFile.c_str())) < 0)
+    {
         LOG_ERROR("Can't delete SDR cache file for connection id: \'" +
         mConnId + "\' @ \'" + mHostname + "\'\n");
     }
@@ -321,27 +345,30 @@ void IpmiConnectionManager::rebuildSdrCache() {
     openSdrCache();
 }
 
-void IpmiConnectionManager::openSdrCache() {
+void IpmiConnectionManager::openSdrCache()
+{
 
     int rv = -1;
     /** open creates/opens the file and reads it into memory using mmap. So all
      * of the sdr parse calls come from memory, not the file.
     */
-    if ((rv = ipmi_sdr_cache_open(mSdrCtx, mIpmiCtx, mCacheFile.c_str())) < 0) {
+    if ((rv = ipmi_sdr_cache_open(mSdrCtx, mIpmiCtx, mCacheFile.c_str())) < 0)
+    {
         
-        switch (ipmi_sdr_ctx_errnum(mSdrCtx)) {
-        case IPMI_SDR_ERR_CACHE_OUT_OF_DATE:
-        case IPMI_SDR_ERR_CACHE_INVALID:
-            LOG_INFO("Deleting out of date or invalid SDR cache file \'" + mCacheFile.string() + "\' for connection id: \'" + mConnId + "\'");
-            (void)ipmi_sdr_cache_delete(mSdrCtx, mCacheFile.c_str());
-            // fall thru
-        case IPMI_SDR_ERR_CACHE_READ_CACHE_DOES_NOT_EXIST:
-            LOG_INFO("Creating new SDR cache file \'" + mCacheFile.string() + "\' for connection id: \'" + mConnId + "\'");
-            (void)ipmi_sdr_cache_create(mSdrCtx, mIpmiCtx, mCacheFile.c_str(), IPMI_SDR_CACHE_CREATE_FLAGS_DEFAULT, NULL, NULL);
-            break;
-        default:
-            throw std::runtime_error("Can't open SDR cache file \'" + mCacheFile.string() + "\' for connection id: \'" + mConnId + "\' -" 
-            + std::string(ipmi_ctx_errormsg(mIpmiCtx)));
+        switch (ipmi_sdr_ctx_errnum(mSdrCtx))
+        {
+            case IPMI_SDR_ERR_CACHE_OUT_OF_DATE:
+            case IPMI_SDR_ERR_CACHE_INVALID:
+                LOG_INFO("Deleting out of date or invalid SDR cache file \'" + mCacheFile.string() + "\' for connection id: \'" + mConnId + "\'");
+                (void)ipmi_sdr_cache_delete(mSdrCtx, mCacheFile.c_str());
+                // fall thru
+            case IPMI_SDR_ERR_CACHE_READ_CACHE_DOES_NOT_EXIST:
+                LOG_INFO("Creating new SDR cache file \'" + mCacheFile.string() + "\' for connection id: \'" + mConnId + "\'");
+                (void)ipmi_sdr_cache_create(mSdrCtx, mIpmiCtx, mCacheFile.c_str(), IPMI_SDR_CACHE_CREATE_FLAGS_DEFAULT, NULL, NULL);
+                break;
+            default:
+                throw std::runtime_error("Can't open SDR cache file \'" + mCacheFile.string() + "\' for connection id: \'" + mConnId + "\' -" 
+                + std::string(ipmi_ctx_errormsg(mIpmiCtx)));
         }
         if ((rv = ipmi_sdr_cache_open(mSdrCtx, mIpmiCtx, mCacheFile.c_str())) < 0)
             throw std::runtime_error("Can't open SDR cache file \'" + mCacheFile.string() + "\' for connection id: \'" + mConnId + "\' -" 
@@ -349,32 +376,43 @@ void IpmiConnectionManager::openSdrCache() {
     }
 
     mCacheFileIsOpen = (rv == 0) ? true : false;
-    mIdleTime = epicsTime::getCurrent(); 
+    updateIdleTime();
 }
 
-void IpmiConnectionManager::createIpmiContext() {
+void IpmiConnectionManager::createIpmiContext()
+{
+    if (mIpmiCtx)
+    {
+        ipmi_ctx_close(mIpmiCtx);
+        ipmi_ctx_destroy(mIpmiCtx);
+    }
 
     mIpmiCtx = ipmi_ctx_create();
 
-    if (!mIpmiCtx) {
+    if (!mIpmiCtx)
+    {
         throw std::runtime_error("Can't create IPMI context for \'" +
         mConnId + "\' @ \'" + mHostname + "\'\n");
     }
 }
 
-void IpmiConnectionManager::connect() {
+void IpmiConnectionManager::connect()
+{
 
     const char* username_ = (mUserName.empty() ? nullptr : mUserName.c_str());
     const char* password_ = (mPassword.empty() ? nullptr : mPassword.c_str());
 
     int connected = -1;
 
-    if (mProtocol == "lan_2.0") {
+    if (mProtocol == "lan_2.0")
+    {
         connected = ipmi_ctx_open_outofband_2_0(
                         mIpmiCtx, mHostname.c_str(), username_, password_,
                         m_k_g, m_k_g_len, mPrivlevel, mCipherSuiteId,
                         mSessionTimeout, mRetransmissionTimeout, mWorkaroundFlags, mFlags);
-    } else {
+    }
+    else 
+    {
         connected = ipmi_ctx_open_outofband(
                         mIpmiCtx, mHostname.c_str(), username_, password_,
                         mAuthtype, mPrivlevel,
@@ -382,7 +420,8 @@ void IpmiConnectionManager::connect() {
 
     }
     
-    if (connected < 0) {
+    if (connected < 0)
+    {
         std::stringstream ss;
         ss << "Can't Connect to \'" << mConnId << "\' @ \'" << mHostname << "\' ";
         ss << "because of \'" << std::string(ipmi_ctx_errormsg(mIpmiCtx)) << "\'\n";
@@ -395,43 +434,61 @@ void IpmiConnectionManager::connect() {
     /** We can set the idle time because I/O was transmitted in open because
      * we passed the ipmi context in.
     */
-    mIdleTime = epicsTime::getCurrent();
+    updateIdleTime();
     mConnStatus = true;
     mConnState = ConnectionState::CONNECTED;
 }
 
-void IpmiConnectionManager::disconnect() {
-
+void IpmiConnectionManager::disconnect()
+{
+    printf("Disconnecting...\n");
     cleanup();
+    mDisconnectTime = epicsTime::getCurrent();
 }
 
-void IpmiConnectionManager::reconnect() {
-    createIpmiContext();
-    createSdrContext();
-    connect();
-    openSdrCache();
-    createSensorContext(); /** This has to come after connection is ready to go.*/
+void IpmiConnectionManager::reconnect()
+{
+
+    /*
+    * Wait a minute before we try to reconnect.
+    * If we have rebooted the chassis, give it time
+    * to fully come back and initialize.
+    */
+    if(epicsTime::getCurrent() > mDisconnectTime+60)
+    {
+        createIpmiContext();
+        createSdrContext();
+        connect();
+        openSdrCache();
+        createSensorContext(); /** This has to come after connection is ready to go.*/
+    }
 }
 
-ipmi_ctx_t IpmiConnectionManager::getIpmiCtx() {
-    if(!mIpmiCtx) {
+ipmi_ctx_t IpmiConnectionManager::getIpmiCtx()
+{
+    if(!mIpmiCtx)
+    {
         createIpmiContext();
     }
 
     return mIpmiCtx;
 }
 
-ipmi_sdr_ctx_t IpmiConnectionManager::getSdrCtx() {
+ipmi_sdr_ctx_t IpmiConnectionManager::getSdrCtx()
+{
 
-    if (mConnState != ConnectionState::CONNECTED) {
+    if (mConnState != ConnectionState::CONNECTED)
+    {
         throw std::runtime_error("Can't return IPMI SDR context for \'" +
         mConnId + "\' @ \'" + mHostname + "\' Device is disconnected.\n");
     }
-    if (!mSdrCtx) {
+    if (!mSdrCtx)
+    {
         throw std::runtime_error("Can't return IPMI SDR context for \'" +
         mConnId + "\' @ \'" + mHostname + "\' sdr-ctx is null.\n");
     }
-    if (!mCacheFileIsOpen) {
+    if (!mCacheFileIsOpen)
+    {
         throw std::runtime_error("Can't return IPMI SDR context for \'" +
         mConnId + "\' @ \'" + mHostname + "\' sdr-cache-file is not open.\n");
     }
@@ -439,49 +496,65 @@ ipmi_sdr_ctx_t IpmiConnectionManager::getSdrCtx() {
     return mSdrCtx;
 }
 
-const std::string &IpmiConnectionManager::getConnectionId() const {
+const std::string &IpmiConnectionManager::getConnectionId() const
+{
     return mConnId;
 }
 
-const std::string &IpmiConnectionManager::getHostname() const {
+const std::string &IpmiConnectionManager::getHostname() const
+{
     return mHostname;
 }
 
-void IpmiConnectionManager::process() {
+void IpmiConnectionManager::process()
+{
 
-    if(mConnState == ConnectionState::CONNECTED) {
+    if(mConnState == ConnectionState::CONNECTED)
+    {
         epicsTime now = mIdleTime + ((mSessionTimeout/1000)/2);
-        if(epicsTime::getCurrent() > now) {
+        if(epicsTime::getCurrent() > now)
+        {
             keepAlive();
         }
     }
-    else {
+    else
+    {
         reconnect();
     }
 }
 
-void IpmiConnectionManager::keepAlive() {
+bool IpmiConnectionManager::isConnected()
+{
+    return (mConnState == ConnectionState::CONNECTED);
+}
+
+void IpmiConnectionManager::keepAlive()
+{
 
     /** We can read the SDR info from the device to keep the session from timing out.*/
     readSdrInfo();
 }
 
-IpmiSdrInfo IpmiConnectionManager::readSdrInfo() {
+IpmiSdrInfo IpmiConnectionManager::readSdrInfo()
+{
     
     int rv = -1;
 
     /** Return 0 on normal; This calls fiid_obj_clear internally*/
-    if((rv = fill_cmd_get_repository_info(mSdrRepositoryInfoRq)) < 0) {
+    if((rv = fill_cmd_get_repository_info(mSdrRepositoryInfoRq)) < 0)
+    {
         throw std::runtime_error("Can't read SDR info for connection id: \'" + mConnId +
         "\', Reason: fill_cmd_get_repository_info() returned -1");
     }
 
-    if((rv = fiid_obj_clear(mSdrRepositoryInfoRs)) < 0) {
+    if((rv = fiid_obj_clear(mSdrRepositoryInfoRs)) < 0)
+    {
         throw std::runtime_error("Can't read SDR info for connection id: \'" + mConnId +
         "\', Reason: fiid_obj_clear() returned -1");
     }
 
-    if((rv = ipmi_cmd(mIpmiCtx, IPMI_BMC_IPMB_LUN_BMC, IPMI_NET_FN_STORAGE_RQ, mSdrRepositoryInfoRq, mSdrRepositoryInfoRs)) < 0) {
+    if((rv = ipmi_cmd(mIpmiCtx, IPMI_BMC_IPMB_LUN_BMC, IPMI_NET_FN_STORAGE_RQ, mSdrRepositoryInfoRq, mSdrRepositoryInfoRs)) < 0)
+    {
         disconnect();
         throw std::runtime_error("Can't read SDR info for connection id: \'" + mConnId +
         "\', Reason: ipmi_cmd() returned -1");
@@ -489,18 +562,21 @@ IpmiSdrInfo IpmiConnectionManager::readSdrInfo() {
 
     uint64_t compCode = 0;
     rv = fiid_obj_get(mSdrRepositoryInfoRs, "comp_code", &compCode);
-    if(rv == 1) {
+    if(rv == 1)
+    {
         /** Data was returned*/
         IpmiSdrInfo info = IpmiSdrInfo(mConnId, mSdrRepositoryInfoRs);
-        mIdleTime = epicsTime::getCurrent();
+        updateIdleTime();
         return info;
     }
-    else if(rv == 0) {
+    else if(rv == 0)
+    {
         /* rv == 0: No data was returned. */
         throw std::runtime_error("Can't read SDR info for connection id: \'" + mConnId +
         "\', Reason: fiid_obj_get() returned 0 (No data was available)");
     }
-    else {
+    else
+    {
         /* rf == -1: Error was returned. */
         throw std::runtime_error("Can't read SDR info for connection id: \'" + mConnId +
         "\', Reason: fiid_obj_get() returned -1 (Error)");
@@ -513,14 +589,16 @@ void IpmiConnectionManager::updateIdleTime()
     mIdleTime = epicsTime::getCurrent();
 }
 
-Provider::Entity IpmiConnectionManager::getSensorReading(const std::shared_ptr<IpmiSensorRecComp> record) {
+Provider::Entity IpmiConnectionManager::getSensorReading(const std::shared_ptr<IpmiSensorRecComp> record)
+{
 
 
     try
     {
         return readSensor(record);
     }
-    catch(const IpmiException &e) {
+    catch(const IpmiException &e)
+    {
         /**
          * Trap possible session-timeouts and handle reconnections. 
          * This is indicative of a session timeout/device disconnected.
@@ -529,7 +607,8 @@ Provider::Entity IpmiConnectionManager::getSensorReading(const std::shared_ptr<I
          * But sometimes you get read errors that are okay and so you do not want to
          * disconnect. e.g., Error Code: '5', Error String: 'sensor reading unavailable'
         */
-        if(e.getErrorCode() == 16) {
+        if(e.getErrorCode() == 16)
+        {
 
             disconnect();
 
@@ -545,7 +624,8 @@ Provider::Entity IpmiConnectionManager::getSensorReading(const std::shared_ptr<I
             ss << "}\n\n";
             throw std::runtime_error(ss.str());
         }
-        else {
+        else
+        {
             //this->disconnect();
             std::stringstream ss;
             ss << "Could not read sensor for {\n";
@@ -618,9 +698,11 @@ bool IpmiConnectionManager::is_valid_oem_command(const std::string &vendor_id, c
     return false;
 }
 
-Provider::Entity IpmiConnectionManager::readSensor(const std::shared_ptr<IpmiSensorRecComp> record) {
+Provider::Entity IpmiConnectionManager::readSensor(const std::shared_ptr<IpmiSensorRecComp> record)
+{
     
-    if(mConnState != ConnectionState::CONNECTED) {
+    if(mConnState != ConnectionState::CONNECTED)
+    {
         std::stringstream ss;
         ss << "Could not read sensor for {\n";
         ss << " * Connection-ID: \'" << mConnId << "\'\n";
@@ -633,7 +715,8 @@ Provider::Entity IpmiConnectionManager::readSensor(const std::shared_ptr<IpmiSen
         throw std::runtime_error(ss.str());
     }
 
-    if (!mSensorCtx) {
+    if (!mSensorCtx)
+    {
         std::stringstream ss;
         ss << "Could not read sensor for {\n";
         ss << " * Connection-ID: \'" << mConnId << "\'\n";
@@ -655,7 +738,8 @@ Provider::Entity IpmiConnectionManager::readSensor(const std::shared_ptr<IpmiSen
 
     int rv = ipmi_sensor_read(mSensorCtx, data.data, data.size, sharedOffset, &readingRaw, &reading, &eventMask);
     
-    if(rv != 1) {
+    if(rv != 1)
+    {
 
         int err_num = ipmi_sensor_read_ctx_errnum (mSensorCtx);
         std::string str_error = ipmi_sensor_read_ctx_strerror (err_num);
@@ -665,8 +749,10 @@ Provider::Entity IpmiConnectionManager::readSensor(const std::shared_ptr<IpmiSen
          * always return the same messages.
          * So, use Lambda to concat strings if they are different...
          */
-        auto getErrStr = [&str_error, &str_errmsg]() {
-            if(str_error.compare(str_errmsg) != 0) {
+        auto getErrStr = [&str_error, &str_errmsg]()
+        {
+            if(str_error.compare(str_errmsg) != 0)
+            {
                 return "\'" + str_error + "\' Error Message: \'" + str_errmsg + "\'";
             }
             else
@@ -683,8 +769,10 @@ Provider::Entity IpmiConnectionManager::readSensor(const std::shared_ptr<IpmiSen
      *  See Table 42-, Generic Event/Reading Type Codes for threshold events.
      *  TODO: Maybe handle threshold events somehow?
     */
-    if(IPMI_EVENT_READING_TYPE_CODE_IS_THRESHOLD(record->get_event_reading_type_code())) {
-        if(reading) {
+    if(IPMI_EVENT_READING_TYPE_CODE_IS_THRESHOLD(record->get_event_reading_type_code()))
+    {
+        if(reading)
+        {
             entity["VAL"] = std::round(*reading * 100.0) / 100.0;
             free(reading);
             getSensorThresholds(entity, record);
@@ -693,11 +781,12 @@ Provider::Entity IpmiConnectionManager::readSensor(const std::shared_ptr<IpmiSen
         else
             entity["VAL"] = (double) eventMask;
     }
-    else {
+    else
+    {
         entity["VAL"] = (double) eventMask;
     }
     
-    mIdleTime = epicsTime::getCurrent();
+    updateIdleTime();
     return entity;
 
 }
@@ -706,16 +795,19 @@ void IpmiConnectionManager::getSensorThresholds(Provider::Entity &entity, const 
 {
     
     int rv = (-1);
-    if((rv = fiid_obj_clear(mGetSensorThresholdsRq)) < 0) {
+    if((rv = fiid_obj_clear(mGetSensorThresholdsRq)) < 0)
+    {
         throw std::runtime_error("Can't clear get_sensor_threshold_request object for "
         "sensor-ID: " + record->get_entity_id_string() + " for connection id: \'" + mConnId + "\'\n");
     }
-    if((rv = fiid_obj_clear(mGetSensorThresholdsRs)) < 0) {
+    if((rv = fiid_obj_clear(mGetSensorThresholdsRs)) < 0)
+    {
         throw std::runtime_error("Can't clear get_sensor_threshold_response object for "
         "sensor-ID: " + record->get_entity_id_string() + " for connection id: \'" + mConnId + "\'\n");
     }
 
-    if((rv = fill_cmd_get_sensor_thresholds (record->get_sensor_number(), mGetSensorThresholdsRq)) < 0) {
+    if((rv = fill_cmd_get_sensor_thresholds (record->get_sensor_number(), mGetSensorThresholdsRq)) < 0)
+    {
         throw std::runtime_error("Can't fill get_sensor_threshold_request object for "
         "sensor-ID: " + record->get_entity_id_string() + " for connection id: \'" + mConnId + "\'\n");
     }
@@ -833,17 +925,20 @@ void IpmiConnectionManager::getSensorHysteresis(Provider::Entity &entity, const 
 {
     int rv = (-1);
     
-    if((rv = fiid_obj_clear(mGetSensorHysteresisRq)) < 0) {
+    if((rv = fiid_obj_clear(mGetSensorHysteresisRq)) < 0)
+    {
         throw std::runtime_error("Can't clear get_sensor_hysteresis_request object for "
         "sensor-ID: " + record->get_entity_id_string() + " for connection id: \'" + mConnId + "\'\n");
     }
     
-    if((rv = fiid_obj_clear(mGetSensorHysteresisRs)) < 0) {
+    if((rv = fiid_obj_clear(mGetSensorHysteresisRs)) < 0)
+    {
         throw std::runtime_error("Can't clear get_sensor_hysteresis_response object for "
         "sensor-ID: " + record->get_entity_id_string() + " for connection id: \'" + mConnId + "\'\n");
     }
 
-    if((rv = fill_cmd_get_sensor_hysteresis (record->get_sensor_number(), IPMI_SENSOR_HYSTERESIS_MASK, mGetSensorHysteresisRq)) < 0) {
+    if((rv = fill_cmd_get_sensor_hysteresis (record->get_sensor_number(), IPMI_SENSOR_HYSTERESIS_MASK, mGetSensorHysteresisRq)) < 0)
+    {
         throw std::runtime_error("Can't fill get_sensor_hysteresis_request object for "
         "sensor-ID: " + record->get_entity_id_string() + " for connection id: \'" + mConnId + "\'\n");
     }
@@ -918,6 +1013,7 @@ void IpmiConnectionManager::getSensorHysteresis(Provider::Entity &entity, const 
 
 }
 
-IpmiSdrInfo IpmiConnectionManager::getSdrInfo() {
+IpmiSdrInfo IpmiConnectionManager::getSdrInfo()
+{
     return readSdrInfo();
 }

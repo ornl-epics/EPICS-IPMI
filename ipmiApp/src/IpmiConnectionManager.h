@@ -56,6 +56,7 @@ private:
     bool mCacheFileIsOpen{false};
     bool mConnStatus{false};
     epicsTime mIdleTime;
+    epicsTime mDisconnectTime;
     fiid_obj_t mSdrRepositoryInfoRq{nullptr};
     fiid_obj_t mSdrRepositoryInfoRs{nullptr};
     fiid_obj_t mGetSensorThresholdsRq{nullptr};
@@ -108,6 +109,7 @@ public:
     const std::string &getConnectionId() const;
     const std::string &getHostname() const;
     void process();
+    bool isConnected();
 
     Provider::Entity getSensorReading(const std::shared_ptr<IpmiSensorRecComp> record);
     ///void write_oem_command(const std::string &connectionId, const std::string vendorId, const std::string command);

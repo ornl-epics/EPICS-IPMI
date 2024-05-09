@@ -110,6 +110,42 @@ void IpmiSdrManager::readSdr() {
     mSdrState = SDRSTATE::INITIALIZED;
 }
 
+int IpmiSdrManager::compSdrHeader()
+{
+    uint8_t ver = 0;
+    uint32_t add_ts = 0;
+    uint32_t era_ts = 0;
+    uint16_t rec_count = 0;
+    int rval = 0;
+
+    ipmi_sdr_ctx_t sdr = mConnMgr.getSdrCtx();
+
+    /* Get the SDR version. */
+    if(ipmi_sdr_cache_sdr_version (sdr, &ver) < 0)
+        throw std::runtime_error("Cannot read SDR cache version for connection id: \'" + mConnMgr.getConnectionId() + "\'\n");
+
+    /* Get the SDR most recent addition timestamp */
+    if(ipmi_sdr_cache_most_recent_addition_timestamp (sdr, &add_ts) < 0)
+        throw std::runtime_error("Error! Could not read SDR cache most recent addition timestamp.");
+
+    /* Get the SDR most recent erase timestamp */
+    if(ipmi_sdr_cache_most_recent_erase_timestamp (sdr, &era_ts) < 0)
+        throw std::runtime_error("Error! Could not read SDR cache most recent erase timestamp.");
+
+    /* Get the SDR record count */
+    if(ipmi_sdr_cache_record_count (sdr, &rec_count) < 0)
+        throw std::runtime_error("Error! Could not read SDR cache record count.");
+    
+    if(ver != mVersion ||
+        rec_count != mRecordCount ||
+        add_ts != mAdditionTimestamp ||
+        era_ts != mEraseTimestamp)
+        {
+            rval = 1;
+        }
+    return rval;
+}
+
 void IpmiSdrManager::insertRecord(ipmi_sdr_ctx_t psdr, uint16_t record_id, uint8_t record_type) {
 
     if(record_type == IPMI_SDR_FORMAT_FULL_SENSOR_RECORD) {
@@ -179,11 +215,25 @@ void IpmiSdrManager::insertIntoEntityMap(std::shared_ptr<IpmiSensorRecComp> prec
 
 void IpmiSdrManager::process() {
 
-    /** Let's read the SDR info every so often and compare it to the
-     * cached SDR to see if we need to update it.
-     * 
-     * If the SDR changes in the device after we have already read it then
-     * we get no notifications that it has changed. So let's check ourselves.
+    /**
+     * SDR could change in two places: (cache file or device)
+    */
+
+    /**
+     * First, check to see if the SDR cache file has changed.
+     * This could happen if the equipment reboots and the 
+     * IpmiConnectionManager reconnects and detects a file difference.
+    */
+    
+    if(compSdrHeader() != 0)
+    {
+        readSdr();
+        return;
+    }
+    /**
+     * Second, check to see if the SDR in the field device has changed.
+     * If so, then we need to rebuild our cache file and local memory
+     * objects.
     */
     epicsTime now = mReadTime + 60;
     if(epicsTime::getCurrent() > now) {

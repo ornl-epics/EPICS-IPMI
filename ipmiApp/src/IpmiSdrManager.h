@@ -50,6 +50,7 @@ private:
     SDRSTATE mSdrState{SDRSTATE::UNINITIALIZED};
     
     void readSdr();
+    int compSdrHeader();
     void insertRecord(ipmi_sdr_ctx_t psdr, uint16_t record_id, uint8_t record_type);
     void insertIntoEntityMap(std::shared_ptr<IpmiSensorRecComp> prec);
     void clearMaps();

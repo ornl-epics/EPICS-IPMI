@@ -63,6 +63,7 @@ const std::vector<std::string> IpmiFruDevLocRec::picmgLedExclusionList = {
     "SHELF FRU INFO",
     "UTCA CARRIER",
     "SH FRU DEV1",
+    "SH FRU DEV2",
     "MCH DA INFO",
     "BMC FRU",
     "TELCO ALARM"
@@ -112,6 +113,9 @@ IpmiFruDevLocRec::IpmiFruDevLocRec(ipmi_ctx_t ipmi, ipmi_sdr_ctx_t sdr, uint16_t
     {
         std::cerr << this->device_id_string << " [" << (unsigned) this->logical_fru_device_device_slave_address
         << "] " << e.what() << '\n';
+        if (ipmi_ctx_set_target(ipmi, NULL, NULL) < 0) {
+            std::cerr << "Failed to reset target IPMI address - " << std::string(ipmi_ctx_errormsg(ipmi));
+        }
     }
 
 }

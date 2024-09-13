@@ -107,7 +107,7 @@ void IpmiSdrInfo::decode(fiid_obj_t response) {
         throw std::runtime_error("Can't decode SDR info field \'record_count\' for connection id: \'" + mConnId +
         "\', Reason: fiid_obj_get() returned \'" + std::to_string(rv) + "\'\n");
     }
-
+    
     mRecordCount = (uint16_t) tval;
 
     tval = 0;

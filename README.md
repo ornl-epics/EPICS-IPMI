@@ -26,6 +26,11 @@ Example configure flags:
 * `./report-sdr --help`
 * Make sure you know the user-name, password, auth-type, and privilege level before trying to connect to a device
 * `./report-sdr -H 192.168.201.205 -u "ADMIN" -p "Password0" --auth-type md5 --privilege-level admin`
+* Create an EPICS database from the SDR by passing the --create-db-file flag
+```
+To create an EPICS database from the SDR:
+./report-sdr -H 192.168.201.205 -u "ADMIN" -p "Password0" --auth-type md5 --privilege-level admin --create-db-file /tmp/server.db
+```
 
 ### 7. Now create an IOC to integrate IPMI devices
 * Add EPICS-IPMI to your IOC's configure/RELEASE file: `EPICSIPMI=/ics/epics/7.0.4.1/epics-ipmi`
@@ -44,6 +49,7 @@ myIoc_LIBS += epicsipmi
 ipmiConnect ipmidev1 192.168.201.205 "user-name" "password" "admin" "lan"
 ```
 * Create an EPICS ai record by referencing the sensor's entity-id:entity-instance 'sensor-name' in the record's INP field
+* **Note**: The EPICS-IPMI module can create epics databases from SDRs automatically. See section **6. Test reading the SDR of a device**
 ```
 record(ai, "FE_MPS:FN0:CU1_TEMP1") {
  field(DTYP, "ipmi")
@@ -54,7 +60,6 @@ record(ai, "FE_MPS:FN0:CU1_TEMP1") {
  field(EGU, "C")
  field(PREC, "1")
 }
-
 ```
 
 

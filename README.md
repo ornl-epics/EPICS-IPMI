@@ -29,7 +29,7 @@ Example configure flags:
 * Create an EPICS database from the SDR by passing the --create-db-file flag
 ```
 To create an EPICS database from the SDR:
-./report-sdr -H 192.168.201.205 -u "ADMIN" -p "Password0" --auth-type md5 --privilege-level admin --create-db-file /tmp/server.db
+./report-sdr -H 1.2.3.4 -u "ADMIN" -p "Password0" --auth-type md5 --privilege-level admin --create-db-file /tmp/server.db
 ```
 
 ### 7. Now create an IOC to integrate IPMI devices

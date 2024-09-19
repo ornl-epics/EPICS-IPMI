@@ -25,11 +25,11 @@ Example configure flags:
 * Run the --help command to see the usage and example usage
 * `./report-sdr --help`
 * Make sure you know the user-name, password, auth-type, and privilege level before trying to connect to a device
-* `./report-sdr -H 1.2.3.4 -u "ADMIN" -p "Password0" --auth-type md5 --privilege-level admin`
+* `./report-sdr -H 1.2.3.4 -u "user-name" -p "password" --auth-type md5 --privilege-level admin`
 * Create an EPICS database from the SDR by passing the --create-db-file flag
 ```
 To create an EPICS database from the SDR:
-./report-sdr -H 1.2.3.4 -u "ADMIN" -p "Password0" --auth-type md5 --privilege-level admin --create-db-file /tmp/server.db
+./report-sdr -H 1.2.3.4 -u "user-name" -p "password" --auth-type md5 --privilege-level admin --create-db-file /tmp/server.db
 ```
 
 ### 7. Now create an IOC to integrate IPMI devices

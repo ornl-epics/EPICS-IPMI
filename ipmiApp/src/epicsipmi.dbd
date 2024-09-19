@@ -1,0 +1,6 @@
+# include "base.dbd"
+# local menu, record, device, driver, breakpoint definitions
+device(ai,INST_IO,devEpicsIpmiAi,"ipmi")
+device(bo,INST_IO,devEpicsIpmiBo,"ipmi")
+
+registrar(epicsipmiRegistrar)

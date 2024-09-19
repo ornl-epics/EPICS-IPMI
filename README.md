@@ -54,7 +54,7 @@ ipmiConnect ipmidev1 192.168.201.205 "user-name" "password" "admin" "lan"
 record(ai, "FE_MPS:FN0:CU1_TEMP1") {
  field(DTYP, "ipmi")
  field(INP, "@ipmidev1 sensor 30:97 'CU TEMP1'")
- field(SCAN, "Event")
+ field(SCAN, "1 second")
  field(EVNT, "1")
  field(PHAS, "0")
  field(EGU, "C")
